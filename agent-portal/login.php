@@ -3,14 +3,14 @@ require __DIR__ . '/../includes/config.php';
 
 $settings = get_settings();
 
-if (!empty($_SESSION['agent_logged_in'])) {
+if (!empty($_SESSION['user_role']) && $_SESSION['user_role'] === 'agent') {
     header('Location: ' . url('agent-portal/index.php'));
     exit;
 }
 
 $error = '';
 $prefillUser = '';
-$lockedUntil = (int) ($_SESSION['agent_login_locked_until'] ?? 0);
+$lockedUntil = (int) ($_SESSION['login_locked_until'] ?? 0);
 $isLocked = $lockedUntil > time();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,16 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = (string) ($_POST['password'] ?? '');
         $prefillUser = $username;
 
-        $agent = find_agent_by_username($username);
-        $ok = $agent && !empty($agent['active']) && !empty($agent['password_hash'])
-            && password_verify($password, $agent['password_hash']);
+        $user = verify_login($username, $password);
+        $agent = ($user && $user['role'] === 'agent' && $user['agent_id']) ? find_agent($user['agent_id']) : null;
+        $ok = $user && $agent && $user['role'] === 'agent' && !empty($agent['active']);
 
         if ($ok) {
-            unset($_SESSION['agent_login_fail_count'], $_SESSION['agent_login_locked_until']);
+            unset($_SESSION['login_fail_count'], $_SESSION['login_locked_until']);
             session_regenerate_id(true);
-            $_SESSION['agent_logged_in'] = true;
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_role'] = 'agent';
+            $_SESSION['user_name'] = $agent['name'];
             $_SESSION['agent_id'] = (int) $agent['id'];
-            $_SESSION['agent_name'] = $agent['name'];
 
             if (!empty($_POST['remember'])) {
                 $lifetime = 60 * 60 * 24 * 30;
@@ -49,18 +50,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ini_set('session.gc_maxlifetime', (string) $lifetime);
             }
 
-            set_agent_last_login((int) $agent['id']);
+            set_user_last_login($user['id']);
 
             $target = safe_internal_path($_POST['redirect'] ?? null, url('agent-portal/index.php'));
             header('Location: ' . $target);
             exit;
         }
 
-        $fails = (int) ($_SESSION['agent_login_fail_count'] ?? 0) + 1;
-        $_SESSION['agent_login_fail_count'] = $fails;
+        $fails = (int) ($_SESSION['login_fail_count'] ?? 0) + 1;
+        $_SESSION['login_fail_count'] = $fails;
         if ($fails >= 5) {
-            $_SESSION['agent_login_locked_until'] = time() + 600;
-            $_SESSION['agent_login_fail_count'] = 0;
+            $_SESSION['login_locked_until'] = time() + 600;
+            $_SESSION['login_fail_count'] = 0;
             $error = 'יותר מדי ניסיונות כושלים. נסו שוב בעוד 10 דקות.';
         } else {
             $error = 'שם משתמש או סיסמה שגויים.';

@@ -3,12 +3,12 @@ require __DIR__ . '/../includes/config.php';
 
 $settings = get_settings();
 
-if (empty($settings['admin_hash'])) {
+if (!admin_exists()) {
     header('Location: ' . url('admin/setup.php'));
     exit;
 }
 
-if (!empty($_SESSION['admin_logged_in'])) {
+if (!empty($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin') {
     header('Location: ' . url('admin/index.php'));
     exit;
 }
@@ -29,14 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = (string) ($_POST['password'] ?? '');
         $prefillUser = $username;
 
-        $ok = $username !== '' && $username === $settings['admin_user']
-            && password_verify($password, $settings['admin_hash']);
+        $user = verify_login($username, $password);
+        $ok = $user && $user['role'] === 'admin';
 
         if ($ok) {
             unset($_SESSION['login_fail_count'], $_SESSION['login_locked_until']);
             session_regenerate_id(true);
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_user'] = $username;
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_role'] = 'admin';
+            $_SESSION['user_name'] = $user['username'];
+            set_user_last_login($user['id']);
 
             if (!empty($_POST['remember'])) {
                 $lifetime = 60 * 60 * 24 * 30;

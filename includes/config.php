@@ -197,8 +197,14 @@ function hydrate_agent(array $row): array
     $row['languages'] = json_decode($row['languages'] ?? '[]', true) ?: [];
     $row['active'] = (bool) $row['active'];
     $row['sort'] = (int) $row['sort'];
-    $row['username'] = $row['username'] ?? '';
-    $row['password_hash'] = $row['password_hash'] ?? '';
+    return $row;
+}
+
+function hydrate_user(array $row): array
+{
+    $row['id'] = (int) $row['id'];
+    $row['agent_id'] = $row['agent_id'] !== null ? (int) $row['agent_id'] : null;
+    $row['active'] = (bool) $row['active'];
     return $row;
 }
 
@@ -306,6 +312,9 @@ function import_seed_into_db(string $jsonPath, bool $wipeOnly = false): void
     foreach (['leads', 'properties', 'partners', 'agents', 'testimonials'] as $table) {
         $pdo->exec("TRUNCATE TABLE $table");
     }
+    // רק משתמשי-סוכן נמחקים (הסוכנים עצמם נמחקים למעלה) — חשבון המנהל לעולם לא
+    // נוגעים בו כאן, כדי שאיפוס/מחיקת נתוני דמו לא ינעל את המנהל המחובר מחוץ למערכת
+    $pdo->exec("DELETE FROM users WHERE role = 'agent'");
     $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
 
     if ($wipeOnly || !is_file($jsonPath)) {
@@ -319,14 +328,25 @@ function import_seed_into_db(string $jsonPath, bool $wipeOnly = false): void
 
     foreach ($seed['agents'] ?? [] as $a) {
         $stmt = $pdo->prepare('INSERT INTO agents
-            (id, name, role, phone, whatsapp, email, photo, bio, areas, languages, active, sort, username, password_hash, last_login_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            (id, name, role, phone, whatsapp, email, photo, bio, areas, languages, active, sort)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             $a['id'], $a['name'], $a['role'] ?? '', $a['phone'] ?? '', $a['whatsapp'] ?? '', $a['email'] ?? '',
             $a['photo'] ?? '', $a['bio'] ?? '', json_encode($a['areas'] ?? [], JSON_UNESCAPED_UNICODE),
             json_encode($a['languages'] ?? [], JSON_UNESCAPED_UNICODE), !empty($a['active']) ? 1 : 0, $a['sort'] ?? 10,
-            ($a['username'] ?? '') !== '' ? $a['username'] : null, ($a['password_hash'] ?? '') !== '' ? $a['password_hash'] : null,
-            $a['last_login_at'] ?? null,
+        ]);
+    }
+
+    foreach ($seed['users'] ?? [] as $u) {
+        if (($u['role'] ?? '') !== 'agent') {
+            continue; // הגנה כפולה — לעולם לא מייבאים/דורסים חשבון admin מקובץ דמו
+        }
+        $stmt = $pdo->prepare('INSERT INTO users
+            (id, username, password_hash, role, agent_id, active, last_login_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt->execute([
+            $u['id'], $u['username'], $u['password_hash'], $u['role'], $u['agent_id'] ?? null,
+            !empty($u['active']) ? 1 : 0, $u['last_login_at'] ?? null, $u['created_at'] ?? date('Y-m-d H:i:s'),
         ]);
     }
 
@@ -390,11 +410,11 @@ function import_seed_into_db(string $jsonPath, bool $wipeOnly = false): void
             'email' => $s['email'] ?? '', 'address' => $s['address'] ?? '', 'facebook' => $s['facebook'] ?? '',
             'instagram' => $s['instagram'] ?? '', 'hero_title' => $s['hero_title'] ?? '', 'hero_sub' => $s['hero_sub'] ?? '',
             'about_text' => $s['about_text'] ?? '', 'stat_years' => $s['stat_years'] ?? 0, 'stat_deals' => $s['stat_deals'] ?? 0,
-            'stat_clients' => $s['stat_clients'] ?? 0, 'admin_user' => $s['admin_user'] ?? '', 'admin_hash' => $s['admin_hash'] ?? '',
+            'stat_clients' => $s['stat_clients'] ?? 0,
         ]);
     }
 
-    foreach (['agents', 'properties', 'partners', 'leads', 'testimonials'] as $table) {
+    foreach (['agents', 'users', 'properties', 'partners', 'leads', 'testimonials'] as $table) {
         $max = (int) $pdo->query("SELECT COALESCE(MAX(id), 0) FROM $table")->fetchColumn();
         $pdo->exec("ALTER TABLE $table AUTO_INCREMENT = " . ($max + 1));
     }
@@ -475,15 +495,98 @@ function agent_listing_count(int $agentId): int
     return count(agent_properties($agentId, true));
 }
 
-function find_agent_by_username(string $username): ?array
+// ---------------------------------------------------------------------------
+// אימות משתמשים (users — admin/agent)
+// ---------------------------------------------------------------------------
+
+/** בודק שם משתמש+סיסמה מול טבלת users, לא תלוי role — עמודי ה-login בודקים role בעצמם */
+function verify_login(string $username, string $password): ?array
 {
     if ($username === '') {
         return null;
     }
-    $stmt = db()->prepare('SELECT * FROM agents WHERE username = ?');
+    $stmt = db()->prepare('SELECT * FROM users WHERE username = ?');
     $stmt->execute([$username]);
     $row = $stmt->fetch();
-    return $row ? hydrate_agent($row) : null;
+    if (!$row || empty($row['active']) || !password_verify($password, $row['password_hash'])) {
+        return null;
+    }
+    return hydrate_user($row);
+}
+
+function find_user(int $id): ?array
+{
+    $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
+    $stmt->execute([$id]);
+    $row = $stmt->fetch();
+    return $row ? hydrate_user($row) : null;
+}
+
+function admin_exists(): bool
+{
+    return (bool) db()->query("SELECT id FROM users WHERE role = 'admin' LIMIT 1")->fetch();
+}
+
+/** ייחודיות גלובלית — משותפת בין admin ו-agent, לא רק בין סוכנים */
+function username_taken(string $username, int $excludeUserId = 0): bool
+{
+    if ($username === '') {
+        return false;
+    }
+    $stmt = db()->prepare('SELECT id FROM users WHERE username = ? AND id != ?');
+    $stmt->execute([$username, $excludeUserId]);
+    return (bool) $stmt->fetch();
+}
+
+function set_user_last_login(int $userId): void
+{
+    db()->prepare('UPDATE users SET last_login_at = ? WHERE id = ?')->execute([date('Y-m-d H:i:s'), $userId]);
+}
+
+function update_user_password(int $userId, string $hash): void
+{
+    db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')->execute([$hash, $userId]);
+}
+
+/** שורת ה-users המקושרת לסוכן נתון, אם יש לו גישה לדשבורד */
+function agent_user_row(int $agentId): ?array
+{
+    $stmt = db()->prepare('SELECT * FROM users WHERE agent_id = ?');
+    $stmt->execute([$agentId]);
+    $row = $stmt->fetch();
+    return $row ? hydrate_user($row) : null;
+}
+
+/** upsert: יוצר/מעדכן את משתמש ה-agent-portal המקושר לסוכן. $newPasswordHash=null שומר את הקיים */
+function set_agent_credentials(int $agentId, string $username, ?string $newPasswordHash): void
+{
+    $existing = agent_user_row($agentId);
+    if ($existing) {
+        if ($newPasswordHash !== null) {
+            db()->prepare('UPDATE users SET username = ?, password_hash = ? WHERE id = ?')
+                ->execute([$username, $newPasswordHash, $existing['id']]);
+        } else {
+            db()->prepare('UPDATE users SET username = ? WHERE id = ?')
+                ->execute([$username, $existing['id']]);
+        }
+        return;
+    }
+    db()->prepare('INSERT INTO users (username, password_hash, role, agent_id, active, created_at) VALUES (?, ?, ?, ?, 1, ?)')
+        ->execute([$username, $newPasswordHash, 'agent', $agentId, date('Y-m-d H:i:s')]);
+}
+
+/** מבטל גישה לדשבורד לחלוטין — מוחק את שורת ה-users המקושרת */
+function clear_agent_credentials(int $agentId): void
+{
+    db()->prepare('DELETE FROM users WHERE agent_id = ?')->execute([$agentId]);
+}
+
+/** יצירת חשבון המנהל היחיד — משמש רק ב-admin/setup.php בהרצה ראשונה */
+function create_admin_user(string $username, string $passwordHash): int
+{
+    db()->prepare('INSERT INTO users (username, password_hash, role, active, created_at) VALUES (?, ?, ?, 1, ?)')
+        ->execute([$username, $passwordHash, 'admin', date('Y-m-d H:i:s')]);
+    return (int) db()->lastInsertId();
 }
 
 function filtered_leads(int $filterAgent, int $filterProperty, int $filterPartner): array
@@ -775,8 +878,8 @@ function duplicate_property(int $id): ?int
 
 function insert_agent(array $v): int
 {
-    $stmt = db()->prepare('INSERT INTO agents (name, role, phone, whatsapp, email, photo, bio, areas, languages, active, sort, username, password_hash)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt = db()->prepare('INSERT INTO agents (name, role, phone, whatsapp, email, photo, bio, areas, languages, active, sort)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     $stmt->execute(agent_bind_params($v));
     return (int) db()->lastInsertId();
 }
@@ -787,15 +890,13 @@ function agent_bind_params(array $v): array
         $v['name'], $v['role'], $v['phone'], $v['whatsapp'], $v['email'], $v['photo'], $v['bio'],
         json_encode($v['areas'] ?? [], JSON_UNESCAPED_UNICODE), json_encode($v['languages'] ?? [], JSON_UNESCAPED_UNICODE),
         $v['active'] ? 1 : 0, $v['sort'],
-        ($v['username'] ?? '') !== '' ? $v['username'] : null,
-        ($v['password_hash'] ?? '') !== '' ? $v['password_hash'] : null,
     ];
 }
 
 function update_agent(int $id, array $v): void
 {
     $stmt = db()->prepare('UPDATE agents SET name=?, role=?, phone=?, whatsapp=?, email=?, photo=?, bio=?, areas=?,
-        languages=?, active=?, sort=?, username=?, password_hash=? WHERE id=?');
+        languages=?, active=?, sort=? WHERE id=?');
     $stmt->execute([...agent_bind_params($v), $id]);
 }
 
@@ -807,21 +908,6 @@ function delete_agent(int $id): void
 function toggle_agent_active(int $id): void
 {
     db()->prepare('UPDATE agents SET active = NOT active WHERE id = ?')->execute([$id]);
-}
-
-function set_agent_last_login(int $id): void
-{
-    db()->prepare('UPDATE agents SET last_login_at = ? WHERE id = ?')->execute([date('Y-m-d H:i:s'), $id]);
-}
-
-function agent_username_taken(string $username, int $excludeId = 0): bool
-{
-    if ($username === '') {
-        return false;
-    }
-    $stmt = db()->prepare('SELECT id FROM agents WHERE username = ? AND id != ?');
-    $stmt->execute([$username, $excludeId]);
-    return (bool) $stmt->fetch();
 }
 
 /** כמה נכסים (כולל טיוטות) משויכים לסוכן — לבדיקת "לא ניתן למחוק" לפני מחיקה */

@@ -63,6 +63,14 @@ These are hard constraints. Do not deviate.
     as the one-time migration source (`migrate.php`); it is no longer read by the
     live site. `data/seed.json` is still live — it's what "reset demo data" in
     `admin/settings.php` imports from.
+  - **Auth**: a single `users` table (`role` = `admin` | `agent`) is the sole source
+    of login credentials for the whole site — see §6. Public-profile data (an
+    agent's name/photo/bio/etc.) stays in `agents`; `users.agent_id` links a login to
+    its profile. There are still two separate login pages/URLs (`admin/login.php`,
+    `agent-portal/login.php`) — only the underlying table and verification logic are
+    unified. This replaced an earlier design where admin credentials lived inside the
+    `settings` row and each agent's credentials lived directly on `agents` (see
+    `migrate-users.php`, run once, in `PROGRESS.md`).
 - **Images** uploaded to `uploads/`, filenames randomized on upload.
 - Add `data/.htaccess` and `uploads/.htaccess` blocking direct access to `.json` and
   any executable extension (`php`, `phtml`, `php3`, `phar`).
@@ -88,6 +96,7 @@ nadlanisteam/
 ├─ sitemap.php               מפת אתר XML — מוגש דרך /sitemap.xml (ראו .htaccess)
 ├─ 404.php
 ├─ migrate.php                סקריפט מיגרציה חד-פעמי ל-MySQL — ראו §3, PROGRESS.md
+├─ migrate-users.php          סקריפט מיגרציה חד-פעמי: מעביר auth ל-users table — ראו §3, PROGRESS.md
 ├─ agent-portal/             דשבורד אישי לסוכן מחובר — §19
 │  ├─ login.php  logout.php
 │  ├─ index.php              דשבורד + סטטיסטיקות מוגבלות לסוכן
@@ -237,23 +246,31 @@ disabled under `prefers-reduced-motion`. No parallax, no counters, no auto-carou
     "facebook": "", "instagram": "",
     "hero_title": "מכירים כל רחוב בנתניה",
     "hero_sub": "…",
-    "about_text": "…",           // multi-line, rendered with white-space: pre-line
-    "admin_user": "admin",
-    "admin_hash": ""             // password_hash(), empty until first-run setup
+    "about_text": "…"            // multi-line, rendered with white-space: pre-line
+    // no admin_user/admin_hash here anymore — auth lives entirely in "users" below
   },
   "agents": [{
+    // profile only — no auth fields here, see "users" below
     "id": 1,
-    "name": "", "role": "סוכן מכירות",
+    "name": "", "role": "סוכן מכירות",   // "role" here = display title, NOT the auth role in "users"
     "phone": "", "whatsapp": "", "email": "",
     "photo": "",                 // filename in uploads/
     "bio": "",
     "areas": ["נתניה"],          // neighborhoods/cities they cover
     "languages": ["עברית"],
     "active": true,
-    "sort": 0,
-    "username": "",              // §19 — empty = no agent-portal login access
-    "password_hash": "",         // §19 — password_hash(), empty until admin sets one
-    "last_login_at": null        // §19 — set only on successful agent-portal login
+    "sort": 0
+  }],
+  "users": [{
+    // sole source of login credentials, both admin and agent-portal — see §3
+    "id": 1,
+    "username": "",
+    "password_hash": "",         // password_hash() output
+    "role": "admin",             // admin | agent
+    "agent_id": null,            // set only when role=agent — links to agents.id
+    "active": true,
+    "last_login_at": null,       // set only on successful login
+    "created_at": ""
   }],
   "properties": [{
     "id": 1,
@@ -314,6 +331,7 @@ Build these first; every page depends on them.
 | `db()` | PDO singleton connection (MySQL) — see §3 |
 | `get_settings()` / `update_settings($values)` | Single-row `settings` table read/partial-update |
 | `find_*($id)` / `all_*()` / `insert_*($values)` / `update_*($id, $values)` / `delete_*($id)` | Per-entity CRUD, one set per table — see `includes/config.php` |
+| `verify_login($user, $pass)` / `admin_exists()` / `set_agent_credentials(...)` / `clear_agent_credentials(...)` | `users`-table auth — shared by both login pages, see §3 |
 | `all_properties($publishedOnly)` | Sorted: featured first, then newest |
 | `find_property($id)` / `find_agent($id)` | Single lookup, `null` if missing |
 | `agent_properties($agentId)` | An agent's listings — powers the agent page |

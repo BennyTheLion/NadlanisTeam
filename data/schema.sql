@@ -1,5 +1,6 @@
 -- סכימת מסד הנתונים למערכת נדלניס טים.
--- סדר יצירה מכבד מפתחות זרים: settings -> agents -> properties -> partners -> leads -> testimonials.
+-- סדר יצירה מכבד מפתחות זרים: settings -> agents -> users -> properties -> partners -> leads -> testimonials.
+-- אימות (auth) מרוכז כולו בטבלת users (role admin/agent) — לא ב-settings/agents.
 
 CREATE TABLE IF NOT EXISTS settings (
   id TINYINT UNSIGNED NOT NULL DEFAULT 1,
@@ -17,8 +18,6 @@ CREATE TABLE IF NOT EXISTS settings (
   stat_years INT NOT NULL DEFAULT 0,
   stat_deals INT NOT NULL DEFAULT 0,
   stat_clients INT NOT NULL DEFAULT 0,
-  admin_user VARCHAR(100) NOT NULL DEFAULT '',
-  admin_hash VARCHAR(255) NOT NULL DEFAULT '',
   PRIMARY KEY (id),
   CONSTRAINT single_row CHECK (id = 1)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -45,11 +44,22 @@ CREATE TABLE IF NOT EXISTS agents (
   languages JSON NOT NULL,
   active TINYINT(1) NOT NULL DEFAULT 1,
   sort INT NOT NULL DEFAULT 10,
-  username VARCHAR(100) NULL,
-  password_hash VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  username VARCHAR(100) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin','agent') NOT NULL,
+  agent_id INT UNSIGNED NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
   last_login_at DATETIME NULL,
+  created_at DATETIME NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uniq_agent_username (username)
+  UNIQUE KEY uniq_users_username (username),
+  UNIQUE KEY uniq_users_agent (agent_id),
+  CONSTRAINT fk_users_agent FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS properties (

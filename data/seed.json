@@ -13,9 +13,7 @@
         "about_text": "נדלניס טים פועל בנתניה עם היכרות מעמיקה עם השכונות, המחירים והאנשים.\nכל עסקה מתחילה בהקשבה: מה חשוב לכם, מה התקציב, ולאן אתם רוצים להגיע.\nמשם, אנחנו כבר דואגים לשאר.",
         "stat_years": 12,
         "stat_deals": 340,
-        "stat_clients": 200,
-        "admin_user": "admin",
-        "admin_hash": "$2y$10$nyPzeILYeBIN9GZkWp5KrOEMotgO6fp4rsDAGuwcTU1arRn4Li0KW"
+        "stat_clients": 200
     },
     "agents": [
         {
@@ -36,10 +34,7 @@
                 "אנגלית"
             ],
             "active": true,
-            "sort": 1,
-            "username": "uri.test",
-            "password_hash": "$2y$10$Pq49SzdZTu8pGTXM6o.DH.HPPKV3bEB8W164\/5q2ZUE8R2du0Uqta",
-            "last_login_at": null
+            "sort": 1
         },
         {
             "id": 2,
@@ -59,10 +54,7 @@
                 "רוסית"
             ],
             "active": true,
-            "sort": 2,
-            "username": "michal.test",
-            "password_hash": "$2y$10$\/Z\/AsL5CzuUYJ0FAPdrP5uWBMO4ShUEyX2Sb24deaVTI.L6t9kwHi",
-            "last_login_at": null
+            "sort": 2
         },
         {
             "id": 3,
@@ -81,10 +73,29 @@
                 "עברית"
             ],
             "active": true,
-            "sort": 3,
-            "username": "",
-            "password_hash": "",
-            "last_login_at": null
+            "sort": 3
+        }
+    ],
+    "users": [
+        {
+            "id": 2,
+            "username": "uri.test",
+            "password_hash": "$2y$10$G8rgPEiQkFc5IiS3gKc.b.1SzYOg0F5YUmKhK7b3OG\/LbwaNyJsaO",
+            "role": "agent",
+            "agent_id": 1,
+            "active": true,
+            "last_login_at": "2026-08-12 10:56:17",
+            "created_at": "2026-08-12 10:57:34"
+        },
+        {
+            "id": 3,
+            "username": "michal.test",
+            "password_hash": "$2y$10$\/Z\/AsL5CzuUYJ0FAPdrP5uWBMO4ShUEyX2Sb24deaVTI.L6t9kwHi",
+            "role": "agent",
+            "agent_id": 2,
+            "active": true,
+            "last_login_at": null,
+            "created_at": "2026-08-12 10:57:34"
         }
     ],
     "properties": [

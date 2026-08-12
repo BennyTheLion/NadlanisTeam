@@ -32,15 +32,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
         $current = (string) ($_POST['current_password'] ?? '');
         $new = (string) ($_POST['new_password'] ?? '');
         $confirm = (string) ($_POST['new_password_confirm'] ?? '');
+        $currentUser = find_user((int) $_SESSION['user_id']);
 
-        if (!password_verify($current, $settings['admin_hash'])) {
+        if (!$currentUser || !password_verify($current, $currentUser['password_hash'])) {
             $errors['current_password'] = 'הסיסמה הנוכחית שגויה.';
         } elseif (mb_strlen($new) < 8) {
             $errors['new_password'] = 'הסיסמה החדשה חייבת להכיל לפחות 8 תווים.';
         } elseif ($new !== $confirm) {
             $errors['new_password_confirm'] = 'אימות הסיסמה אינו תואם.';
         } else {
-            update_settings(['admin_hash' => password_hash($new, PASSWORD_DEFAULT)]);
+            update_user_password((int) $_SESSION['user_id'], password_hash($new, PASSWORD_DEFAULT));
             $successMsg = 'הסיסמה עודכנה.';
         }
     } elseif ($action === 'reset_demo') {

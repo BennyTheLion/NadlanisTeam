@@ -12,11 +12,12 @@
 > (admin screens table), and §13 (seed data) to match. It's still the authoritative
 > spec — just not frozen at 15 sections anymore.
 >
-> **§3 (Stack & storage) is now out of date and needs a manual look**: it still says
-> "single JSON file, no database" — that was true until this session's MySQL
-> migration (see the dedicated section below). Data storage is now MySQL via PDO;
-> `data/data.json` is a historical migration source only, no longer read by the live
-> site. `data/seed.json` is still live — it's what "reset demo data" imports from.
+> §3 (Stack & storage) was updated to reflect the MySQL migration (see the dedicated
+> sections below for both the storage migration and the later `users`/role migration).
+> `data/data.json` is a historical one-time migration source only, no longer read by
+> the live site. `data/seed.json` is still live — it's what "reset demo data" imports
+> from, and it's kept in sync with the current schema (including a top-level `users`
+> array for agent-portal logins — see below).
 
 ## Storage migration: JSON file → MySQL (this session)
 
@@ -158,6 +159,135 @@ still off-limits to automated navigation. If a future session starts with no liv
 admin session in the browser, admin-side browser verification will need a different
 approach (the user logs in manually, or verification stays at the code/lint/CLI
 level).
+
+## Auth model rework: single `users` table with `role` (admin/agent)
+
+Follow-up to the JSON→MySQL migration above, requested by the user in the same
+session: "isnt it better to create users table with rol instead of agents?" then
+"i need to have an admin and agent each has different permissions". Before this,
+auth was two unrelated systems: the single admin's credentials lived inside the
+`settings` singleton row (`admin_user`/`admin_hash`, oddly parked next to
+`agency_name`/`tagline`), and each agent's login lived directly on the `agents`
+table (`username`/`password_hash`/`last_login_at`) — two session-key sets
+(`admin_logged_in` vs `agent_logged_in`), two nearly-identical login pages, two
+separate lockout counters. Went through the same plan-mode workflow as every other
+architectural change this build (research current auth code directly — no Explore
+agents needed, since this session had authored every touched file minutes earlier —
+then a written plan, approved before implementation).
+
+**Key decision, stated up front in the plan**: the two login *pages* stay exactly
+where they are (`admin/login.php` "כניסת מנהל", `agent-portal/login.php` "כניסת
+סוכנים") — only the data model and verification logic behind them unify. Merging
+into one login page/URL would have been a bigger UX change than what was asked.
+
+**Schema**: new `users` table (`id, username, password_hash, role ENUM('admin',
+'agent'), agent_id NULL, active, last_login_at, created_at`), `UNIQUE` on `username`
+(**globally** — an admin and an agent can no longer accidentally/intentionally share
+a username, since they're now literally the same namespace) and on `agent_id` (one
+login per agent profile), `agent_id` is a real FK to `agents.id` with
+`ON DELETE CASCADE` — deleting an agent's profile now automatically deletes their
+login too, verified live (created a throwaway agent+credentials, deleted the agent,
+confirmed the `users` row vanished with zero extra code). `agents` loses `username`/
+`password_hash`/`last_login_at` entirely — it's now a pure public-profile table.
+`settings` loses `admin_user`/`admin_hash`.
+
+**Naming note kept deliberately**: `agents.role` (free text like "סוכן בכיר") and
+the new `users.role` (the admin/agent enum) share an English word but are unrelated
+concepts living in different tables/arrays (`$agent['role']` vs `$user['role']`) —
+not renamed, since there's no actual UI collision (Hebrew labels differ, and auth
+role is never displayed as a field).
+
+**`includes/config.php`**: `find_agent_by_username()`/`agent_username_taken()`/
+`set_agent_last_login()` removed, replaced by role-agnostic equivalents —
+`verify_login($username, $password)` (single entry point both login pages call,
+returns a hydrated user row with `role`/`agent_id` or `null`; each login page then
+checks the role itself, so a valid agent password typed into the admin form gets the
+same generic "שם משתמש או סיסמה שגויים" as a wrong password — never a "this account
+exists but isn't an admin" hint), `find_user()`, `admin_exists()` (first-run check
+for `admin/setup.php`, replaces `!empty($settings['admin_hash'])`), `username_taken()`
+(global, not per-table), `set_user_last_login()`, `update_user_password()`, and the
+agent-credential-management pair `set_agent_credentials()`/`clear_agent_credentials()`
+(upsert/delete the linked `users` row — `admin/agent-edit.php`'s credentials
+fieldset calls these instead of writing `username`/`password_hash` into the `agents`
+update). `create_admin_user()` for the one-time `admin/setup.php` bootstrap flow —
+tested directly (created and deleted a second admin via CLI) confirming the schema
+genuinely supports multiple admins now, though no UI for managing them was built
+(wasn't asked for; natural follow-up if ever needed).
+
+**Session keys, unified**: `user_id`/`user_role`/`user_name` (+`agent_id` kept
+separately for agent sessions, to avoid a JOIN on every agent-portal request)
+replace all of `admin_logged_in`/`admin_user`/`agent_logged_in`/`agent_id`/
+`agent_name`. **Lockout is deliberately unified too** — one `login_fail_count`/
+`login_locked_until` pair shared by both login pages, not the previous accidental-
+duplication-turned-real-separation. This is a considered simplification, not a
+regression: it's genuinely one auth system with two doors now, so "too many failed
+attempts from this browser" reasonably applies regardless of which door was hit.
+Verified this doesn't misfire in the trivial way the *old* separate-key design was
+built to avoid (an attacker locked out of one door immediately trying the other from
+the same session) — that's now correctly blocked on both, which is the intended
+behavior post-unification, not a bug.
+
+**The trickiest correctness issue, caught during implementation, not in the plan**:
+`import_seed_into_db()` (the function reused by both the one-time migration and
+`admin/settings.php`'s "reset/wipe demo data") originally truncated a flat list of
+tables including `users` — which would have **deleted the live admin account** every
+time someone clicked "מחיקת נתוני דמו". Caught by re-reading the function against the
+new schema before running anything, not by a test failure. Fixed: demo wipe/reset
+now only ever `DELETE FROM users WHERE role = 'agent'` (agents are being wiped
+anyway), and the seed-import loop skips any non-`'agent'` row defensively even if a
+future `seed.json` accidentally contained one. Verified directly (not just read):
+wiped demo data, confirmed `admin_exists()` still true and admin `username`
+unchanged, confirmed both agent logins gone; reset demo data, confirmed all three
+users back with their original working passwords (`verify_login()` succeeded with
+the same credentials from before the wipe — the hashes round-tripped through
+`seed.json` unchanged, not regenerated).
+
+**`data/seed.json` needed a fresh export** (same lesson as the earlier storage
+migration's seed.json gap) — it predated this change entirely and had no top-level
+`users` key, so a reset would have restored agents/properties/etc. but left both
+agent-portal logins unrecoverable. Re-exported from live DB state right before
+testing wipe/reset, with the admin intentionally excluded from the exported `users`
+array (only agent-role rows) so the JSON file never carries the admin password hash
+at all — tighter than the previous seed.json, which had incidentally included
+`admin_hash` inside its `settings` block.
+
+**Migration script**: `migrate-users.php` (new, project root, one-time — mirrors
+`migrate.php`'s shape: idempotency check via `SHOW TABLES LIKE 'users'`, `--force`
+to redo). Creates `users`, copies existing credentials over in one transaction
+(rolls back cleanly on any failure, leaving the old columns untouched so nothing is
+lost), then drops the legacy columns only after the transaction commits successfully.
+DB was `mysqldump`'d to a scratch file immediately before running this, standard
+precaution for any schema-altering migration on data that matters. Run once this
+session: migrated 1 admin + 2 agents, verified byte-for-byte via direct `password_verify()`
+checks that no password needed resetting.
+
+**One real implementation bug, caught immediately by lint-then-run discipline**:
+`SHOW COLUMNS FROM $table LIKE ?` fails as a *native* (non-emulated) prepared
+statement in this MariaDB version — `PDO::ATTR_EMULATE_PREPARES => false` (set
+project-wide for the reasons documented in the storage-migration section above)
+doesn't support placeholders in `SHOW` statements. Fixed by querying
+`information_schema.columns` instead (a normal `SELECT`, which native-prepares
+fine) — worth remembering if a future one-off script ever reaches for `SHOW ... LIKE
+?` again.
+
+**Browser-verification note, same constraint as before, with a new wrinkle this
+time**: manually patching a session file on disk (setting `$_SESSION['user_id']`/
+`user_role`/`user_name` directly, the same technique used earlier this build to
+clear a lockout counter) worked to get a browser tab into an authenticated admin
+state without touching `admin/login.php`'s form — but the patched session didn't
+survive long enough for a later verification step (lost between an
+`admin/agent-edit.php` check and a subsequent `admin/settings.php` check, most
+likely PHP session GC or simply this dev environment's session store being more
+volatile than expected — several 0-byte `sess_*` files were observed accumulating
+in `C:\xampp\tmp`). When that happened mid-verification, the fallback was to test
+the same behavior (`import_seed_into_db()`'s wipe/reset preserving admin) directly
+via PHP CLI against the real database instead of fighting the browser session
+further — equally valid for a pure data-layer question, and it's what actually
+caught the admin-account-gets-wiped bug above. Lesson for next time a browser
+session is needed for verification: don't assume a manually-patched session file
+stays alive for multiple steps — verify right after patching, and prefer direct
+CLI/SQL verification for anything that's really a data-layer question rather than a
+true UI/browser-rendering question.
 
 ## Partners system (§18 in NadlanisTeam.md) — built via plan mode
 

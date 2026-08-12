@@ -3,7 +3,7 @@ require __DIR__ . '/../includes/config.php';
 
 $settings = get_settings();
 
-if (!empty($settings['admin_hash'])) {
+if (admin_exists()) {
     header('Location: ' . url('admin/login.php'));
     exit;
 }
@@ -30,14 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$errors) {
-            update_settings([
-                'admin_user' => $username,
-                'admin_hash' => password_hash($password, PASSWORD_DEFAULT),
-            ]);
+            $userId = create_admin_user($username, password_hash($password, PASSWORD_DEFAULT));
 
             session_regenerate_id(true);
-            $_SESSION['admin_logged_in'] = true;
-            $_SESSION['admin_user'] = $username;
+            $_SESSION['user_id'] = $userId;
+            $_SESSION['user_role'] = 'admin';
+            $_SESSION['user_name'] = $username;
 
             header('Location: ' . url('admin/index.php'));
             exit;

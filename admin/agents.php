@@ -50,12 +50,13 @@ require __DIR__ . '/includes/admin-header.php';
               <td><?= e(implode(', ', $a['areas'] ?? [])) ?></td>
               <td><?= e((string) agent_listing_count((int) $a['id'])) ?></td>
               <td><?= e((string) ($a['sort'] ?? 0)) ?></td>
+              <?php $agentUser = agent_user_row((int) $a['id']); ?>
               <td>
-                <span class="badge <?= !empty($a['username']) ? 'badge-success' : 'badge-muted' ?>">
-                  <?= !empty($a['username']) ? 'יש גישה' : 'אין גישה' ?>
+                <span class="badge <?= $agentUser ? 'badge-success' : 'badge-muted' ?>">
+                  <?= $agentUser ? 'יש גישה' : 'אין גישה' ?>
                 </span>
               </td>
-              <td><?= e($a['last_login_at'] ?? '—') ?></td>
+              <td><?= e($agentUser['last_login_at'] ?? '—') ?></td>
               <td>
                 <form method="post" style="display:inline;">
                   <?= csrf_field() ?>

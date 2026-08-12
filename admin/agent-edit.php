@@ -13,8 +13,9 @@ $errors = [];
 $values = $existing ?? [
     'name' => '', 'role' => 'סוכן', 'phone' => '', 'whatsapp' => '', 'email' => '',
     'photo' => '', 'bio' => '', 'areas' => [], 'languages' => [], 'active' => true, 'sort' => 10,
-    'username' => '', 'password_hash' => '', 'last_login_at' => null,
 ];
+$existingUser = $existing ? agent_user_row($id) : null;
+$prefillUsername = $existingUser['username'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_check()) {
@@ -41,10 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newUsername = trim($_POST['username'] ?? '');
         $newPassword = (string) ($_POST['new_password'] ?? '');
         $newPasswordConfirm = (string) ($_POST['new_password_confirm'] ?? '');
-        $existingHash = $values['password_hash'] ?? '';
+        $existingHash = $existingUser['password_hash'] ?? '';
 
-        if ($newUsername !== '' && agent_username_taken($newUsername, $id)) {
-            $errors['username'] = 'שם המשתמש הזה כבר בשימוש על ידי סוכן אחר.';
+        if ($newUsername !== '' && username_taken($newUsername, $existingUser['id'] ?? 0)) {
+            $errors['username'] = 'שם המשתמש הזה כבר בשימוש על ידי משתמש אחר.';
         }
         if ($newPassword !== '' || $newPasswordConfirm !== '') {
             if (mb_strlen($newPassword) < 8) {
@@ -73,20 +74,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$errors) {
-            $values['username'] = $newUsername;
-            if ($newUsername === '') {
-                $values['password_hash'] = '';
-            } elseif ($newPassword !== '') {
-                $values['password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
-            } else {
-                $values['password_hash'] = $existingHash;
-            }
-
+            $targetId = $id;
             if ($existing) {
                 update_agent($id, $values);
             } else {
-                insert_agent($values);
+                $targetId = insert_agent($values);
             }
+
+            if ($newUsername === '') {
+                clear_agent_credentials($targetId);
+            } else {
+                $newHash = $newPassword !== '' ? password_hash($newPassword, PASSWORD_DEFAULT) : null;
+                set_agent_credentials($targetId, $newUsername, $newHash);
+            }
+
             header('Location: ' . url('admin/agents.php'));
             exit;
         }
@@ -196,13 +197,13 @@ require __DIR__ . '/includes/admin-header.php';
       <div class="admin-form-grid cols-2">
         <div class="field <?= isset($errors['username']) ? 'has-error' : '' ?>">
           <label for="username">שם משתמש</label>
-          <input class="input" type="text" id="username" name="username" value="<?= e($values['username'] ?? '') ?>" autocomplete="off">
+          <input class="input" type="text" id="username" name="username" value="<?= e($_POST['username'] ?? $prefillUsername) ?>" autocomplete="off">
           <?php if (isset($errors['username'])): ?><span class="error"><?= e($errors['username']) ?></span><?php endif; ?>
         </div>
-        <?php if (!empty($values['last_login_at'])): ?>
+        <?php if (!empty($existingUser['last_login_at'])): ?>
           <div class="field" style="margin-bottom:0;">
             <label>כניסה אחרונה</label>
-            <p style="margin:0; padding-top:10px; color: var(--ink-3);"><?= e($values['last_login_at']) ?></p>
+            <p style="margin:0; padding-top:10px; color: var(--ink-3);"><?= e($existingUser['last_login_at']) ?></p>
           </div>
         <?php endif; ?>
       </div>
