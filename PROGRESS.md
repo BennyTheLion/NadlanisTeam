@@ -450,6 +450,48 @@ background removal (see below):
 Note: the hero's own header-to-eyebrow-text gap was checked and found to already be a
 clean 64px (`padding-block: var(--space-5)` on `.hero-content`) — not a bug, left as-is.
 
+## Hero search widget below the fold on short viewports (post-deploy-prep request)
+
+User report: "hero section has search property but to fill the search properties user
+need to scrol down its bad UX." Measured before touching anything (iframe technique,
+same as every other viewport check this build): `.hero` uses `min-height: 88vh` with
+`align-items: center`, but the hero's actual **content** height (eyebrow + title + sub +
+CTA buttons + full search card) is ~690px regardless of viewport — meaning on any screen
+where 88vh of the real viewport is *less* than ~690px (true for most laptops once you
+subtract OS taskbar + browser chrome from the raw screen resolution, and for most phones
+even before subtracting anything), `min-height` is just a floor with zero effect: the box
+grows to fit content, `align-items: center` centers content within a box that's already
+exactly its own size (no-op), and the search card sits wherever static stacking puts it —
+confirmed via `getBoundingClientRect()` showing **identical** search-grid position across
+viewport heights 600–768px, only starting to shift once height exceeded content's natural
+size. This is why the bug reproduced consistently rather than being an edge case.
+
+Fixed with two independent, verified-in-isolation changes:
+1. **`@media (max-height: 820px)`**: compacts `.hero-content` padding-block, title/sub/cta
+   margins, and `.search-card` padding — reclaims ~150px without touching font sizes or
+   removing content, since this is purely spacing fat. `.hero{ min-height: auto }` in the
+   same query so the box hugs its (now smaller) content instead of an arbitrary vh value.
+2. **`@media (max-height: 650px)`**: for the genuinely tightest viewports (phones with a
+   visible browser chrome eating real estate), hides `.hero-sub` (the one purely marketing
+   line — least essential of the hero's elements, unlike the title or the search form
+   itself) and caps the title's `clamp()` ceiling down from 4.2rem to 3rem.
+3. **Separately, mobile's `.search-grid` went from a single stacked column (5 rows: city,
+   type, rooms, free-text, submit) to a 2-column grid with the submit button spanning
+   full width (3 visual rows)** — this was a *width*-driven contributor independent of the
+   height fix above (below the existing `min-width: 760px` breakpoint the grid was always
+   single-column, which is what made the mobile case worse than desktop-short-viewport
+   even after the height compaction alone).
+
+Verified via the iframe-viewport technique across a matrix, not just eyeballing: 550–820px
+height at 1280px width (desktop/laptop), and 320×568 / 375×667 / 390×600 / 390×700 (phone
+sizes from iPhone SE 1st-gen up to modern iPhones) — search grid fits within the viewport
+with zero scroll in every case, confirmed via `grid.getBoundingClientRect().bottom <=
+viewportHeight`, plus a `scrollWidth === clientWidth` check at each to confirm none of this
+reintroduced horizontal overflow. A full-height desktop screenshot (700px+ tall) was also
+checked visually to confirm the compaction doesn't look cramped on viewports where it's
+not strictly needed but the media query still applies (nothing broke qualitatively, just
+tighter spacing).
+
 ## Agent login/dashboard system (§19 in NadlanisTeam.md) — built via plan mode
 
 Requested mid-session ("add login/logout icon for real estate agents every agent has

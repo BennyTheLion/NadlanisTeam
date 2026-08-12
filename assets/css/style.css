@@ -440,6 +440,25 @@ textarea.input{ min-height: 110px; resize: vertical; }
 }
 @media (min-width: 900px){ .hero{ min-height: 82vh; } }
 
+/* מסך נמוך (מחשבים ניידים נפוצים אחרי ניכוי כלי הדפדפן, טאבלטים לרוחב) —
+   תוכן ה-hero בגובהו הטבעי עולה על 88vh כמעט תמיד, כך שmin-height לא עוזר;
+   מצמצמים ריווח כדי שתיבת החיפוש לא תיפול מתחת לקפל בלי לגלול. */
+@media (max-height: 820px){
+  .hero{ min-height: auto; }
+  .hero-content{ padding-block: var(--space-3); }
+  .hero-title{ margin-bottom: 8px; }
+  .hero-sub{ margin-bottom: var(--space-2); }
+  .hero-cta{ margin-bottom: var(--space-2); }
+  .search-card{ padding: var(--space-2); }
+  .search-tabs{ margin-bottom: 8px; }
+}
+/* מסך נמוך מאוד (טלפונים עם סרגלי דפדפן גדולים) — תת-הכותרת השיווקית היא
+   הכי פחות קריטית מבין רכיבי ה-hero, לעומת הכותרת וטופס החיפוש עצמו */
+@media (max-height: 650px){
+  .hero-sub{ display: none; }
+  .hero-title{ font-size: clamp(1.8rem, 7vw, 3rem); }
+}
+
 /* כרטיס חיפוש מהיר — בתוך ה-hero, ממש מתחת לטקסט ולכפתורים */
 .search-card{
   position: relative;
@@ -459,11 +478,11 @@ textarea.input{ min-height: 110px; resize: vertical; }
 }
 .search-tab-input:checked + .search-tab{ background: var(--blue); color: var(--paper); }
 .search-tab-input:focus-visible + .search-tab{ outline: 3px solid var(--blue); outline-offset: 2px; }
-.search-grid{ display: grid; gap: 10px; grid-template-columns: 1fr; }
-.search-grid .btn{ margin-top: 4px; }
+.search-grid{ display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); }
+.search-grid .btn{ margin-top: 4px; grid-column: 1 / -1; }
 @media (min-width: 760px){
   .search-grid{ grid-template-columns: repeat(4, 1fr) auto; align-items: end; }
-  .search-grid .btn{ margin-top: 0; }
+  .search-grid .btn{ margin-top: 0; grid-column: auto; }
 }
 
 /* ===================================================================
