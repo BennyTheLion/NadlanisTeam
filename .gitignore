@@ -4,3 +4,6 @@
 # ישירה באתר עצמו, לא דרך git. .htaccess כן נשאר במעקב (כבר היה קיים).
 /uploads/*
 !/uploads/.htaccess
+
+# פרטי DB אמיתיים של השרת — לעולם לא ל-git, ראו includes/db-config.example.php
+/includes/db-config.php

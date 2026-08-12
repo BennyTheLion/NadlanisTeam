@@ -164,10 +164,28 @@ function tel_link(string $number): string
 // שכבת נתונים (MySQL)
 // ---------------------------------------------------------------------------
 
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'nadlanisteam');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+/**
+ * פרטי ההתחברות האמיתיים (פרודקשן וכו') חיים ב-includes/db-config.php —
+ * קובץ מקומי לשרת בלבד, לא נכנס ל-git (ראו .gitignore + db-config.example.php).
+ * בפיתוח מקומי (XAMPP) אין צורך בקובץ הזה כלל — נופלים לברירות המחדל למטה.
+ */
+$dbConfigOverride = __DIR__ . '/db-config.php';
+if (is_file($dbConfigOverride)) {
+    require $dbConfigOverride;
+}
+if (!defined('DB_HOST')) {
+    define('DB_HOST', 'localhost');
+}
+if (!defined('DB_NAME')) {
+    define('DB_NAME', 'nadlanisteam');
+}
+if (!defined('DB_USER')) {
+    define('DB_USER', 'root');
+}
+if (!defined('DB_PASS')) {
+    define('DB_PASS', '');
+}
+unset($dbConfigOverride);
 
 function db(): PDO
 {
