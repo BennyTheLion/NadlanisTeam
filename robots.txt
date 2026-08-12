@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /includes/
+Disallow: /data/
+
+Sitemap: http://localhost/nadlanisteam/sitemap.xml

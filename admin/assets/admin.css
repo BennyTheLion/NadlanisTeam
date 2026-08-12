@@ -1,0 +1,106 @@
+/* ===================================================================
+   ניהול — פריסה כללית
+   בונה על גבי טוקני assets/css/style.css (נטען קודם בכל עמוד ניהול).
+=================================================================== */
+body.admin-body{ background: var(--surface); min-height: 100vh; }
+
+.admin-shell{ display: flex; flex-direction: column; min-height: 100vh; }
+
+.admin-topbar{
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-2); padding: 14px var(--space-2);
+  background: var(--ink); color: var(--paper);
+}
+.admin-topbar .admin-brand{ font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
+.admin-topbar .admin-brand span{ color: var(--blue-dim); }
+.admin-menu-toggle{
+  background: transparent; border: 1px solid rgba(255,255,255,.3); border-radius: var(--radius-sm);
+  color: var(--paper); padding: 8px 12px; font: inherit; cursor: pointer;
+}
+
+.admin-sidebar{
+  background: var(--ink); color: var(--paper);
+  display: none;
+  flex-direction: column;
+  padding: var(--space-2);
+  gap: 2px;
+}
+.admin-sidebar[data-open="true"]{ display: flex; }
+.admin-sidebar a{
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  color: rgba(255,255,255,.78); font-size: 0.95rem;
+}
+.admin-sidebar a:hover{ background: rgba(255,255,255,.08); color: var(--paper); }
+.admin-sidebar a.is-active{ background: var(--blue); color: var(--paper); font-weight: 600; }
+.admin-sidebar .admin-sidebar-foot{ margin-top: var(--space-2); border-top: 1px solid rgba(255,255,255,.15); padding-top: var(--space-2); }
+
+.admin-main{ flex: 1; padding: var(--space-3) var(--space-2) var(--space-6); }
+.admin-main-head{ display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.admin-main-head h1{ font-size: 1.5rem; }
+
+@media (min-width: 900px){
+  .admin-shell{ flex-direction: row; }
+  .admin-topbar{ display: none; }
+  .admin-sidebar{ display: flex; width: 230px; flex-shrink: 0; min-height: 100vh; position: sticky; top: 0; align-self: flex-start; }
+  .admin-main{ padding: var(--space-4); }
+}
+
+/* כרטיסים */
+.admin-card{ background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-3); box-shadow: var(--shadow-sm); margin-bottom: var(--space-3); }
+.admin-card h2{ font-size: 1.1rem; margin-bottom: var(--space-2); }
+
+/* דשבורד */
+.admin-stat-grid{ display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-3); }
+@media (min-width: 700px){ .admin-stat-grid{ grid-template-columns: repeat(4, 1fr); } }
+.admin-stat-tile{ background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-2); text-align: center; box-shadow: var(--shadow-sm); }
+.admin-stat-num{ font-family: var(--font-display); font-size: 2rem; color: var(--blue-deep); font-weight: 700; }
+.admin-stat-label{ font-size: 0.82rem; color: var(--ink-3); margin-top: 2px; }
+
+/* טבלאות */
+.admin-table-wrap{ overflow-x: auto; }
+.admin-table{ width: 100%; border-collapse: collapse; font-size: 0.92rem; white-space: nowrap; }
+.admin-table th{ text-align: start; color: var(--ink-3); font-weight: 600; font-size: 0.8rem; padding: 10px 12px; border-bottom: 2px solid var(--line); }
+.admin-table td{ padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.admin-table tr:last-child td{ border-bottom: 0; }
+.admin-table tr.is-unread{ font-weight: 700; }
+.admin-thumb{ width: 52px; height: 40px; object-fit: cover; border-radius: 6px; background: var(--surface); }
+.admin-row-actions{ display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* תגיות סטטוס */
+.badge{ display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: var(--blue-tint); color: var(--blue-deep); }
+.badge-success{ background: #E4F5EE; color: var(--success); }
+.badge-alert{ background: #FBE7DC; color: var(--alert); }
+.badge-muted{ background: var(--surface); color: var(--ink-3); }
+
+/* כפתורים נוספים */
+.btn-sm{ padding: 8px 14px; font-size: 0.85rem; }
+.btn-danger{ background: transparent; color: var(--alert); border: 1.5px solid #F0C9B0; }
+.btn-danger:hover{ background: #FBE7DC; }
+
+/* טפסים */
+.admin-form-grid{ display: grid; gap: var(--space-2); }
+@media (min-width: 700px){ .admin-form-grid.cols-2{ grid-template-columns: 1fr 1fr; } }
+.admin-fieldset{ border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-2) var(--space-2) 0; margin-bottom: var(--space-3); }
+.admin-fieldset legend{ padding: 0 8px; font-weight: 700; color: var(--blue-deep); }
+.admin-check-grid{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 600px){ .admin-check-grid{ grid-template-columns: repeat(3, 1fr); } }
+.admin-check-row{ display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.admin-check-row input{ width: 18px; height: 18px; }
+
+/* תמונות */
+.admin-image-grid{ display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-2); margin-block: var(--space-2); }
+.admin-image-tile{ position: relative; border-radius: var(--radius-sm); overflow: hidden; border: 2px solid var(--line); aspect-ratio: 4/3; }
+.admin-image-tile.is-cover{ border-color: var(--blue); }
+.admin-image-tile img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+.admin-image-tile .admin-image-cover-badge{ position: absolute; top: 4px; inset-inline-start: 4px; background: var(--blue); color: var(--paper); font-size: 0.7rem; padding: 2px 8px; border-radius: 999px; }
+.admin-image-actions{ position: absolute; inset-inline: 0; bottom: 0; display: flex; gap: 4px; padding: 4px; background: linear-gradient(0deg, rgba(0,0,0,.65), transparent); }
+.admin-image-actions button{ flex: 1; background: rgba(255,255,255,.92); border: 0; border-radius: 6px; padding: 4px; font-size: 0.72rem; cursor: pointer; }
+
+/* התראות */
+.admin-login-wrap{ min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-2); background: var(--surface); }
+.admin-login-card{ background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: var(--shadow-md); padding: var(--space-4); width: 100%; max-width: 380px; }
+.admin-login-card h1{ font-size: 1.4rem; text-align: center; margin-bottom: var(--space-3); }
+.admin-login-logo{ text-align: center; margin-bottom: var(--space-3); font-family: var(--font-display); font-size: 1.3rem; color: var(--blue-deep); }
+
+.empty-note{ color: var(--ink-3); text-align: center; padding: var(--space-3) 0; }
