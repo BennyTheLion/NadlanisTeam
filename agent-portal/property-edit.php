@@ -147,6 +147,34 @@ require __DIR__ . '/includes/agent-header.php';
 <?php if (!empty($errors['_general'])): ?><p class="alert-box alert-error"><?= e($errors['_general']) ?></p><?php endif; ?>
 <?php if (!$existing): ?><p class="alert-box" style="background:var(--blue-tint); color:var(--blue-deep);">שמרו את הנכס תחילה כדי לנהל סדר תמונות וקביעת תמונה ראשית.</p><?php endif; ?>
 
+<?php if ($existing && !empty($values['images'])): ?>
+<div class="admin-card">
+  <fieldset class="admin-fieldset">
+    <legend>תמונות קיימות</legend>
+    <div class="admin-image-grid">
+      <?php foreach ($values['images'] as $i => $img): ?>
+        <div class="admin-image-tile <?= $i === 0 ? 'is-cover' : '' ?>">
+          <?php if ($i === 0): ?><span class="admin-image-cover-badge">ראשית</span><?php endif; ?>
+          <img src="<?= e(media_url($img)) ?>" alt="">
+          <div class="admin-image-actions">
+            <?php if ($i > 0): ?>
+              <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="up"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הזזה למעלה">↑</button></form>
+            <?php endif; ?>
+            <?php if ($i < count($values['images']) - 1): ?>
+              <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="down"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הזזה למטה">↓</button></form>
+            <?php endif; ?>
+            <?php if ($i > 0): ?>
+              <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="cover"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הגדרה כתמונה ראשית">ראשית</button></form>
+            <?php endif; ?>
+            <form method="post" onsubmit="return confirm('למחוק את התמונה?');"><?= csrf_field() ?><input type="hidden" name="img_action" value="delete"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit">מחיקה</button></form>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </fieldset>
+</div>
+<?php endif; ?>
+
 <div class="admin-card">
   <form method="post" enctype="multipart/form-data" novalidate>
     <?= csrf_field() ?>
@@ -271,31 +299,7 @@ require __DIR__ . '/includes/agent-header.php';
     </fieldset>
 
     <fieldset class="admin-fieldset">
-      <legend>תמונות</legend>
-      <?php if (!empty($values['images'])): ?>
-        <div class="admin-image-grid">
-          <?php foreach ($values['images'] as $i => $img): ?>
-            <div class="admin-image-tile <?= $i === 0 ? 'is-cover' : '' ?>">
-              <?php if ($i === 0): ?><span class="admin-image-cover-badge">ראשית</span><?php endif; ?>
-              <img src="<?= e(media_url($img)) ?>" alt="">
-              <div class="admin-image-actions">
-                <?php if ($existing): ?>
-                  <?php if ($i > 0): ?>
-                    <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="up"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הזזה למעלה">↑</button></form>
-                  <?php endif; ?>
-                  <?php if ($i < count($values['images']) - 1): ?>
-                    <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="down"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הזזה למטה">↓</button></form>
-                  <?php endif; ?>
-                  <?php if ($i > 0): ?>
-                    <form method="post"><?= csrf_field() ?><input type="hidden" name="img_action" value="cover"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit" title="הגדרה כתמונה ראשית">ראשית</button></form>
-                  <?php endif; ?>
-                  <form method="post" onsubmit="return confirm('למחוק את התמונה?');"><?= csrf_field() ?><input type="hidden" name="img_action" value="delete"><input type="hidden" name="img_index" value="<?= $i ?>"><button type="submit">מחיקה</button></form>
-                <?php endif; ?>
-              </div>
-            </div>
-          <?php endforeach; ?>
-        </div>
-      <?php endif; ?>
+      <legend>הוספת תמונות</legend>
       <div class="field <?= isset($errors['images']) ? 'has-error' : '' ?>">
         <label for="images">הוספת תמונות (ניתן לבחור כמה, jpg/png/webp, עד 8MB לתמונה)</label>
         <input class="input" type="file" id="images" name="images[]" accept=".jpg,.jpeg,.png,.webp" multiple>

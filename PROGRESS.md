@@ -537,6 +537,30 @@ and never touched the main save flow's `$_POST` fields). No CSS in `style.css` s
 pure structural fix with no visual change. Verified `php -l` clean; DOM-level fix
 verified via the same repro-in-browser technique described above.
 
+`agent-portal/property-edit.php` turned out to be a separate, independently-maintained
+copy of the same page (agents editing their own listings) — same nested-form structure,
+same bug, caught only after fixing the admin side and testing agent login separately.
+Applied the identical structural fix there too. Worth remembering: this page exists in
+two copies (`admin/property-edit.php` and `agent-portal/property-edit.php`) that aren't
+shared/included from one source, so a future change to one's images-management markup
+needs to be mirrored in the other by hand.
+
+Separately, deploying this fix to production surfaced two unrelated pre-existing
+infrastructure problems on Hostinger, both fixed along the way: (1) the Git deployment's
+Install Path was pointed at the account's primary `public_html`, which already held an
+unrelated project (`LandingFlow`) — deploys need to target the actual NadlanisTeam
+website's own folder instead; (2) the `users` table (added by the users-table/role
+migration) was never actually created on the production database — it had been set up
+manually rather than via `migrate-users.php` or a full `schema.sql` run, so admin/agent
+login was 500-erroring independently of this bug. Both are now resolved: the repo was
+manually re-initialized (`git init` + `remote add` + `fetch` + `reset --hard`) directly
+in the correct folder, and the `users` table was created via `schema.sql`'s definition
+with the admin account and agent credentials set up fresh through `admin/setup.php` and
+each agent's "פרטי כניסה לדשבורד" section — no data was migrated/guessed since none of
+it existed to migrate. A stale server-side cache (PHP OPcache and/or Hostinger's page
+cache) also briefly masked the deployed fix after all of the above was resolved; purging
+it (via hPanel's PHP reset option) made the new code visible.
+
 ## Agent login/dashboard system (§19 in NadlanisTeam.md) — built via plan mode
 
 Requested mid-session ("add login/logout icon for real estate agents every agent has
