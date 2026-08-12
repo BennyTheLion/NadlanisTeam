@@ -492,6 +492,51 @@ checked visually to confirm the compaction doesn't look cramped on viewports whe
 not strictly needed but the media query still applies (nothing broke qualitatively, just
 tighter spacing).
 
+## Property-edit save button silently did nothing on live production (post-deploy-prep bug report)
+
+User report on the live Hostinger site: editing an existing property (text fields +
+checkboxes), clicking "שמירת שינויים" produced **zero visible reaction** — no reload,
+no URL change, no red text in DevTools Console, no entry at all in the DevTools Network
+tab when the button was clicked. Ruled out step by step rather than guessed at: not a JS
+runtime error (console was clean), not native HTML5 validation blocking submission (the
+form has `novalidate`, confirmed by reading `admin/property-edit.php` directly — so a
+malformed `type="number"` field couldn't be the cause either), and the Network tab staying
+completely empty on click meant the browser never even attempted to send a request — i.e.
+the button itself wasn't wired to any form at all in the parsed DOM.
+
+Root cause, found by reading `admin/property-edit.php`: the per-image reorder/delete
+controls (↑ / ↓ / "ראשית" / "מחיקה", each its own tiny `<form method="post">…</form>` for
+an instant `img_action` POST) were rendered **inside** the main
+`<form method="post" enctype="multipart/form-data" novalidate>…</form>` that wraps the
+whole edit page. HTML does not allow nested `<form>` elements. Per the HTML5 parsing
+spec, encountering a `<form>` start tag while already inside a form is a parse error and
+the inner start tag is silently **ignored** (no new form element is created, so the
+"form pointer" still points at the outer form) — but the inner tag's matching `</form>`
+end tag is *not* ignored: it closes whatever form the pointer currently references, i.e.
+the **outer** form, prematurely. Confirmed directly rather than left as theory: built a
+minimal static-HTML repro of both the old and new markup shapes, loaded each in a real
+tab, and read `button.form?.id` via `javascript_tool` — under the old nested structure
+the save button's `.form` property was `null` (unreachable by any submit), under the
+fixed structure it correctly resolved to the outer form's id.
+
+Practical effect: on any property that already has at least one uploaded image (i.e.
+every normal edit, since new properties get images added only after the first save —
+see the "שמרו את הנכס תחילה" notice on the new-property form), the very first per-image
+mini-form's closing tag terminated the real form early. Everything physically below that
+point in the markup — price, rooms, checkboxes, description, agent select, and the
+"שמירת שינויים" button itself — ended up **outside** any form element once parsed,
+matching the report exactly: no request fires because the submit button has no form to
+submit.
+
+Fix: moved the entire existing-images management grid (thumbnails + their up/down/cover/
+delete mini-forms) to its own `.admin-card` **before** the main edit `<form>` opens,
+leaving only the "add new images" file input inside the main form (it was already a
+separate concern from the instant per-image actions — those already POST independently
+and never touched the main save flow's `$_POST` fields). No CSS in `style.css` scopes
+`.admin-image-grid`/`.admin-image-tile`/etc. to being inside a `<form>`, so this is a
+pure structural fix with no visual change. Verified `php -l` clean; DOM-level fix
+verified via the same repro-in-browser technique described above.
+
 ## Agent login/dashboard system (§19 in NadlanisTeam.md) — built via plan mode
 
 Requested mid-session ("add login/logout icon for real estate agents every agent has
