@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 
 if (empty($settings['admin_hash'])) {
     header('Location: ' . url('admin/setup.php'));

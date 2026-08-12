@@ -3,7 +3,7 @@
  * מצפה ש-auth.php כבר נטען (מגדיר $settings ומוודא סשן מחובר).
  * משתנה אופציונלי: $adminTitle
  */
-$settings = $settings ?? load_data()['settings'];
+$settings = $settings ?? get_settings();
 $adminTitle = $adminTitle ?? 'ניהול';
 $currentAdminScript = basename($_SERVER['SCRIPT_NAME'] ?? '');
 

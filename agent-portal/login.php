@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 
 if (!empty($_SESSION['agent_logged_in'])) {
     header('Location: ' . url('agent-portal/index.php'));
@@ -49,14 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ini_set('session.gc_maxlifetime', (string) $lifetime);
             }
 
-            $data = load_data();
-            foreach ($data['agents'] as &$a) {
-                if ((int) $a['id'] === (int) $agent['id']) {
-                    $a['last_login_at'] = date('Y-m-d H:i:s');
-                }
-            }
-            unset($a);
-            save_data($data);
+            set_agent_last_login((int) $agent['id']);
 
             $target = safe_internal_path($_POST['redirect'] ?? null, url('agent-portal/index.php'));
             header('Location: ' . $target);

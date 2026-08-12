@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/../includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 
 if (!empty($settings['admin_hash'])) {
     header('Location: ' . url('admin/login.php'));
@@ -30,10 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$errors) {
-            $data = load_data();
-            $data['settings']['admin_user'] = $username;
-            $data['settings']['admin_hash'] = password_hash($password, PASSWORD_DEFAULT);
-            save_data($data);
+            update_settings([
+                'admin_user' => $username,
+                'admin_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ]);
 
             session_regenerate_id(true);
             $_SESSION['admin_logged_in'] = true;

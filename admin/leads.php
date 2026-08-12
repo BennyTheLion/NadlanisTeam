@@ -10,15 +10,15 @@ $sourceLabels = ['property' => 'נכס', 'agent' => 'סוכן', 'partner' => 'ש
 if (isset($_GET['export']) && $_GET['export'] === 'csv') {
     $leads = filtered_leads($filterAgent, $filterProperty, $filterPartner);
     $propsById = [];
-    foreach (load_data()['properties'] as $p) {
+    foreach (all_properties(false) as $p) {
         $propsById[(int) $p['id']] = $p['title'];
     }
     $agentsById = [];
-    foreach (load_data()['agents'] as $a) {
+    foreach (all_agents(false) as $a) {
         $agentsById[(int) $a['id']] = $a['name'];
     }
     $partnersById = [];
-    foreach (load_data()['partners'] as $p) {
+    foreach (all_partners(false) as $p) {
         $partnersById[(int) $p['id']] = $p['name'];
     }
 
@@ -49,19 +49,11 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
 
     if ($action === 'mark_read') {
-        foreach ($data['leads'] as &$l) {
-            if ((int) $l['id'] === $id) {
-                $l['read'] = true;
-            }
-        }
-        unset($l);
-        save_data($data);
+        mark_lead_read($id);
     } elseif ($action === 'delete') {
-        $data['leads'] = array_values(array_filter($data['leads'], fn($l) => (int) $l['id'] !== $id));
-        save_data($data);
+        delete_lead($id);
     }
 
     $qs = http_build_query(['agent' => $filterAgent ?: null, 'property' => $filterProperty ?: null, 'partner' => $filterPartner ?: null]);
@@ -76,7 +68,7 @@ $agentsById = [];
 foreach ($agents as $a) {
     $agentsById[(int) $a['id']] = $a['name'];
 }
-$properties = load_data()['properties'];
+$properties = all_properties(false);
 $propsById = [];
 foreach ($properties as $p) {
     $propsById[(int) $p['id']] = $p['title'];

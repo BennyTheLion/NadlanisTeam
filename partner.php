@@ -13,7 +13,7 @@ if (!$partner || empty($partner['active'])) {
 $cat = partner_categories()[$partner['category']] ?? ['label' => $partner['category'], 'icon' => '🔗'];
 $initials = mb_substr($partner['name'], 0, 1);
 
-$pageTitle = $partner['name'] . ' — ' . $cat['label'] . ' | ' . load_data()['settings']['agency_name'];
+$pageTitle = $partner['name'] . ' — ' . $cat['label'] . ' | ' . get_settings()['agency_name'];
 $pageDescription = $partner['description_short'] ?: ($partner['name'] . ', ' . $cat['label']);
 $ogImage = media_url($partner['logo'] ?? null);
 require __DIR__ . '/includes/header.php';
@@ -76,7 +76,7 @@ $backUrl = safe_internal_path($_GET['back'] ?? null, url('partners.php'));
         <a class="btn btn-primary btn-block" href="<?= e(tel_link($partner['phone'])) ?>">התקשרו ל<?= e($partner['name']) ?></a>
       <?php endif; ?>
       <?php if (!empty($partner['whatsapp'])): ?>
-        <a class="btn btn-whatsapp btn-block" href="<?= e(wa_link($partner['whatsapp'], 'שלום ' . $partner['name'] . ', מצאתי אתכם באתר ' . load_data()['settings']['agency_name'])) ?>" target="_blank" rel="noopener">וואטסאפ</a>
+        <a class="btn btn-whatsapp btn-block" href="<?= e(wa_link($partner['whatsapp'], 'שלום ' . $partner['name'] . ', מצאתי אתכם באתר ' . get_settings()['agency_name'])) ?>" target="_blank" rel="noopener">וואטסאפ</a>
       <?php endif; ?>
       <?php if (!empty($partner['website'])): ?>
         <a class="btn btn-outline btn-block" href="<?= e($partner['website']) ?>" target="_blank" rel="noopener">אתר אינטרנט</a>

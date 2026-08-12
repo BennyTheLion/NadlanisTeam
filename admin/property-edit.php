@@ -13,44 +13,36 @@ $errors = [];
 
 /** מיון פעולות תמונה מיידיות (מזיזות/מוחקות/קובעות ראשית) — פועלות רק על נכס קיים */
 if ($existing && $_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check() && isset($_POST['img_action'])) {
-    $data = load_data();
-    foreach ($data['properties'] as &$p) {
-        if ((int) $p['id'] !== $id) {
-            continue;
-        }
-        $images = $p['images'] ?? [];
-        $idx = (int) ($_POST['img_index'] ?? -1);
-        switch ($_POST['img_action']) {
-            case 'up':
-                if ($idx > 0 && $idx < count($images)) {
-                    [$images[$idx - 1], $images[$idx]] = [$images[$idx], $images[$idx - 1]];
-                }
-                break;
-            case 'down':
-                if ($idx >= 0 && $idx < count($images) - 1) {
-                    [$images[$idx + 1], $images[$idx]] = [$images[$idx], $images[$idx + 1]];
-                }
-                break;
-            case 'cover':
-                if ($idx > 0 && $idx < count($images)) {
-                    $cover = $images[$idx];
-                    unset($images[$idx]);
-                    array_unshift($images, $cover);
-                    $images = array_values($images);
-                }
-                break;
-            case 'delete':
-                if (isset($images[$idx])) {
-                    delete_uploaded_image($images[$idx]);
-                    unset($images[$idx]);
-                    $images = array_values($images);
-                }
-                break;
-        }
-        $p['images'] = $images;
+    $images = $existing['images'] ?? [];
+    $idx = (int) ($_POST['img_index'] ?? -1);
+    switch ($_POST['img_action']) {
+        case 'up':
+            if ($idx > 0 && $idx < count($images)) {
+                [$images[$idx - 1], $images[$idx]] = [$images[$idx], $images[$idx - 1]];
+            }
+            break;
+        case 'down':
+            if ($idx >= 0 && $idx < count($images) - 1) {
+                [$images[$idx + 1], $images[$idx]] = [$images[$idx], $images[$idx + 1]];
+            }
+            break;
+        case 'cover':
+            if ($idx > 0 && $idx < count($images)) {
+                $cover = $images[$idx];
+                unset($images[$idx]);
+                array_unshift($images, $cover);
+                $images = array_values($images);
+            }
+            break;
+        case 'delete':
+            if (isset($images[$idx])) {
+                delete_uploaded_image($images[$idx]);
+                unset($images[$idx]);
+                $images = array_values($images);
+            }
+            break;
     }
-    unset($p);
-    save_data($data);
+    update_property_images($id, $images);
     header('Location: ' . url('admin/property-edit.php?id=' . $id));
     exit;
 }
@@ -129,23 +121,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['img_action'])) {
         $values['images'] = $newImages;
 
         if (!$errors) {
-            $data = load_data();
             if ($existing) {
-                foreach ($data['properties'] as &$p) {
-                    if ((int) $p['id'] === $id) {
-                        $p = array_merge($p, $values, ['id' => $id]);
-                    }
-                }
-                unset($p);
-                save_data($data);
+                update_property($id, $values);
                 header('Location: ' . url('admin/property-edit.php?id=' . $id));
             } else {
-                $newId = next_id('property');
-                $data = load_data();
-                $values['id'] = $newId;
-                $values['created_at'] = date('Y-m-d H:i:s');
-                $data['properties'][] = $values;
-                save_data($data);
+                $newId = insert_property($values);
                 header('Location: ' . url('admin/property-edit.php?id=' . $newId));
             }
             exit;

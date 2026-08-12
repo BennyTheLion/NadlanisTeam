@@ -1,13 +1,13 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'אודות — ' . $settings['agency_name'];
 $pageDescription = 'הכירו את נדלניס טים — צוות תיווך, שיווק והשקעות נדל״ן שמכיר את נתניה לעומק, שכונה שכונה.';
 require __DIR__ . '/includes/header.php';
 
 $agents = all_agents(true);
-$testimonials = load_data()['testimonials'];
+$testimonials = all_testimonials();
 $cities = cities_in_use();
 ?>
 

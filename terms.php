@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'תנאי שימוש — ' . $settings['agency_name'];
 $pageDescription = 'תנאי השימוש באתר ' . $settings['agency_name'] . '.';
 $robotsMeta = 'noindex, follow';

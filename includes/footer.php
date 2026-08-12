@@ -1,5 +1,5 @@
 <?php
-$settings = load_data()['settings'];
+$settings = get_settings();
 $showActionBar = $showActionBar ?? true;
 $actionBarProperty = $actionBarProperty ?? null;
 ?>

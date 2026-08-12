@@ -5,7 +5,7 @@ $errors = [];
 $editId = (int) ($_GET['edit'] ?? 0);
 $editing = null;
 if ($editId) {
-    foreach (load_data()['testimonials'] as $t) {
+    foreach (all_testimonials() as $t) {
         if ((int) $t['id'] === $editId) {
             $editing = $t;
             break;
@@ -19,9 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
 
     if ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
-        $data = load_data();
-        $data['testimonials'] = array_values(array_filter($data['testimonials'], fn($t) => (int) $t['id'] !== $id));
-        save_data($data);
+        delete_testimonial($id);
         header('Location: ' . url('admin/testimonials.php'));
         exit;
     }
@@ -41,20 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
         }
 
         if (!$errors) {
-            $data = load_data();
             if ($id) {
-                foreach ($data['testimonials'] as &$t) {
-                    if ((int) $t['id'] === $id) {
-                        $t = array_merge($t, $values, ['id' => $id]);
-                    }
-                }
-                unset($t);
+                update_testimonial($id, $values);
             } else {
-                $newId = next_id('testimonial');
-                $data = load_data();
-                $data['testimonials'][] = array_merge($values, ['id' => $newId]);
+                insert_testimonial($values);
             }
-            save_data($data);
             header('Location: ' . url('admin/testimonials.php'));
             exit;
         }
@@ -62,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     }
 }
 
-$testimonials = load_data()['testimonials'];
+$testimonials = all_testimonials();
 
 $adminTitle = 'המלצות';
 require __DIR__ . '/includes/admin-header.php';

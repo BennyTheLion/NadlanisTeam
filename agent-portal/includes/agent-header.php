@@ -3,7 +3,7 @@
  * מצפה ש-auth.php כבר נטען (מגדיר $currentAgent, $agentId ומוודא סשן מחובר).
  * משתנה אופציונלי: $portalTitle
  */
-$settings = $settings ?? load_data()['settings'];
+$settings = $settings ?? get_settings();
 $portalTitle = $portalTitle ?? 'איזור סוכנים';
 $currentPortalScript = basename($_SERVER['SCRIPT_NAME'] ?? '');
 

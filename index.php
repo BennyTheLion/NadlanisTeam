@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = $settings['agency_name'] . ' — ' . $settings['tagline'];
 $pageDescription = 'נדלניס טים — תיווך, שיווק והשקעות נדל״ן בנתניה. חיפוש נכסים למכירה ולהשכרה, ליווי אישי מהתחלה ועד הסוף.';
 $jsonLd = [
@@ -24,7 +24,7 @@ if (count($featured) < 6) {
     }
 }
 $agents = all_agents(true);
-$testimonials = load_data()['testimonials'];
+$testimonials = all_testimonials();
 $cities = cities_in_use();
 ?>
 

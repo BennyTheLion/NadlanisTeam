@@ -43,12 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newPasswordConfirm = (string) ($_POST['new_password_confirm'] ?? '');
         $existingHash = $values['password_hash'] ?? '';
 
-        if ($newUsername !== '') {
-            foreach (all_agents(false) as $other) {
-                if ((int) $other['id'] !== $id && ($other['username'] ?? '') === $newUsername) {
-                    $errors['username'] = 'שם המשתמש הזה כבר בשימוש על ידי סוכן אחר.';
-                }
-            }
+        if ($newUsername !== '' && agent_username_taken($newUsername, $id)) {
+            $errors['username'] = 'שם המשתמש הזה כבר בשימוש על ידי סוכן אחר.';
         }
         if ($newPassword !== '' || $newPasswordConfirm !== '') {
             if (mb_strlen($newPassword) < 8) {
@@ -86,20 +82,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $values['password_hash'] = $existingHash;
             }
 
-            $data = load_data();
             if ($existing) {
-                foreach ($data['agents'] as &$a) {
-                    if ((int) $a['id'] === $id) {
-                        $a = array_merge($a, $values, ['id' => $id]);
-                    }
-                }
-                unset($a);
+                update_agent($id, $values);
             } else {
-                $newId = next_id('agent');
-                $data = load_data();
-                $data['agents'][] = array_merge($values, ['id' => $newId]);
+                insert_agent($values);
             }
-            save_data($data);
             header('Location: ' . url('admin/agents.php'));
             exit;
         }

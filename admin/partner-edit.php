@@ -13,22 +13,14 @@ $errors = [];
 
 /** מחיקת תמונה בודדת מהגלריה — פועל רק על שותף קיים */
 if ($existing && $_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check() && isset($_POST['gallery_action'])) {
-    $data = load_data();
-    foreach ($data['partners'] as &$p) {
-        if ((int) $p['id'] !== $id) {
-            continue;
-        }
-        $gallery = $p['gallery'] ?? [];
-        $idx = (int) ($_POST['gallery_index'] ?? -1);
-        if ($_POST['gallery_action'] === 'delete' && isset($gallery[$idx])) {
-            delete_uploaded_image($gallery[$idx]);
-            unset($gallery[$idx]);
-            $gallery = array_values($gallery);
-        }
-        $p['gallery'] = $gallery;
+    $gallery = $existing['gallery'] ?? [];
+    $idx = (int) ($_POST['gallery_index'] ?? -1);
+    if ($_POST['gallery_action'] === 'delete' && isset($gallery[$idx])) {
+        delete_uploaded_image($gallery[$idx]);
+        unset($gallery[$idx]);
+        $gallery = array_values($gallery);
     }
-    unset($p);
-    save_data($data);
+    update_partner_gallery($id, $gallery);
     header('Location: ' . url('admin/partner-edit.php?id=' . $id));
     exit;
 }
@@ -113,23 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['gallery_action'])) {
         $values['gallery'] = $newGallery;
 
         if (!$errors) {
-            $data = load_data();
             if ($existing) {
-                foreach ($data['partners'] as &$p) {
-                    if ((int) $p['id'] === $id) {
-                        $p = array_merge($p, $values, ['id' => $id]);
-                    }
-                }
-                unset($p);
-                save_data($data);
+                update_partner($id, $values);
                 header('Location: ' . url('admin/partner-edit.php?id=' . $id));
             } else {
-                $newId = next_id('partner');
-                $data = load_data();
-                $values['id'] = $newId;
-                $values['created_at'] = date('Y-m-d H:i:s');
-                $data['partners'][] = $values;
-                save_data($data);
+                $newId = insert_partner($values);
                 header('Location: ' . url('admin/partner-edit.php?id=' . $newId));
             }
             exit;

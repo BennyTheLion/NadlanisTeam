@@ -51,18 +51,21 @@ These are hard constraints. Do not deviate.
 ## 3. Stack & storage
 
 - **PHP 8.0+**, procedural, no framework, no Composer.
-- **Storage: a single JSON file** at `data/data.json`. No MySQL.
-  Rationale: the agency has tens of listings, not thousands; JSON means zero DB setup,
-  and the whole site is backed up by copying one folder.
-  - All writes go through `save_data()` using `file_put_contents(..., LOCK_EX)`.
-  - All reads go through `load_data()`, cached per-request.
-  - If the file is missing or corrupt, fall back to `default_data()` and rewrite it.
+- **Storage: MySQL (MariaDB via XAMPP), database `nadlanisteam`** — see §6 for the
+  schema (`data/schema.sql`) and §19-adjacent build history (`PROGRESS.md`) for the
+  migration. All data access goes through `includes/config.php` (PDO, prepared
+  statements) — no other file touches the database directly, per the original design
+  goal below, which is exactly what made the migration a contained change.
+  - **Historical note, kept for context**: the site originally ran on a single JSON
+    file (`data/data.json`, via `load_data()`/`save_data()`) — deliberately simple
+    for an agency with tens of listings, not thousands. It was migrated to MySQL
+    mid-build at the user's explicit request. `data/data.json` still exists on disk
+    as the one-time migration source (`migrate.php`); it is no longer read by the
+    live site. `data/seed.json` is still live — it's what "reset demo data" in
+    `admin/settings.php` imports from.
 - **Images** uploaded to `uploads/`, filenames randomized on upload.
 - Add `data/.htaccess` and `uploads/.htaccess` blocking direct access to `.json` and
   any executable extension (`php`, `phtml`, `php3`, `phar`).
-
-> If MySQL is ever wanted later, keep all data access inside `includes/config.php` so
-> only that one file has to change.
 
 ---
 
@@ -84,6 +87,7 @@ nadlanisteam/
 ├─ terms.php                  תנאי שימוש (noindex)
 ├─ sitemap.php               מפת אתר XML — מוגש דרך /sitemap.xml (ראו .htaccess)
 ├─ 404.php
+├─ migrate.php                סקריפט מיגרציה חד-פעמי ל-MySQL — ראו §3, PROGRESS.md
 ├─ agent-portal/             דשבורד אישי לסוכן מחובר — §19
 │  ├─ login.php  logout.php
 │  ├─ index.php              דשבורד + סטטיסטיקות מוגבלות לסוכן
@@ -105,8 +109,9 @@ nadlanisteam/
 │  ├─ js/properties-map.js   תצוגת מפה אינטראקטיבית ב-properties.php (Leaflet + markercluster)
 │  ├─ js/partners.js         שיפור פרוגרסיבי לוויזרד "מציאת בעל מקצוע" — §18
 │  └─ img/                   placeholder.svg, og-default.jpg, logo
-├─ data/data.json
-├─ data/seed.json            תמונת מצב נקייה של נתוני הדמו, לשחזור מ-admin/settings.php
+├─ data/schema.sql           סכימת MySQL — מורץ על ידי migrate.php
+├─ data/data.json            מקור המיגרציה החד-פעמית בלבד — לא נקרא יותר על ידי האתר החי
+├─ data/seed.json            תמונת מצב נקייה של נתוני הדמו, לשחזור מ-admin/settings.php (לתוך MySQL)
 ├─ uploads/                  תמונות נכסים, סוכנים ושותפים
 ├─ robots.txt
 ├─ .htaccess                 מפנה /sitemap.xml ל-sitemap.php
@@ -210,7 +215,15 @@ disabled under `prefers-reduced-motion`. No parallax, no counters, no auto-carou
 
 ---
 
-## 6. Data model (`data/data.json`)
+## 6. Data model
+
+> Storage is MySQL (`data/schema.sql` is the authoritative, current schema — see §3).
+> The shape below is still accurate as the logical data model — it's exactly what
+> `includes/config.php`'s hydration functions (`hydrate_property()`, `hydrate_agent()`,
+> etc.) reconstruct from SQL rows back into PHP, field-for-field, so every template
+> in the site still works against this same shape. Kept here in its original
+> `data/data.json`-era JSON form because it's the clearest illustration of the shape,
+> not because the site still reads a JSON file.
 
 ```jsonc
 {
@@ -272,10 +285,11 @@ disabled under `prefers-reduced-motion`. No parallax, no counters, no auto-carou
     "source": "property",        // property | agent | contact | home
     "created_at": "", "read": false
   }],
-  "testimonials": [{ "id": 1, "name": "", "city": "", "text": "", "rating": 5 }],
-  "counters": { "property": 1, "agent": 1, "lead": 1, "testimonial": 1 }
+  "testimonials": [{ "id": 1, "name": "", "city": "", "text": "", "rating": 5 }]
 }
 ```
+`counters` (per-entity next-id tracking) no longer exists — it was a JSON-era
+mechanism, replaced by MySQL `AUTO_INCREMENT` on each table's `id` column.
 
 **Controlled vocabularies** (define as functions in `config.php`, never inline strings):
 
@@ -297,7 +311,9 @@ Build these first; every page depends on them.
 | `money($n)` | `₪1,850,000` |
 | `money_short($n)` | `₪1.85 מ׳` / `₪850 אלף` — used on cards and in the sticky price |
 | `media_url($file)` | `uploads/x.jpg`, passes through full URLs, falls back to `placeholder.svg` |
-| `load_data()` / `save_data()` / `next_id()` | JSON layer, per-request cache |
+| `db()` | PDO singleton connection (MySQL) — see §3 |
+| `get_settings()` / `update_settings($values)` | Single-row `settings` table read/partial-update |
+| `find_*($id)` / `all_*()` / `insert_*($values)` / `update_*($id, $values)` / `delete_*($id)` | Per-entity CRUD, one set per table — see `includes/config.php` |
 | `all_properties($publishedOnly)` | Sorted: featured first, then newest |
 | `find_property($id)` / `find_agent($id)` | Single lookup, `null` if missing |
 | `agent_properties($agentId)` | An agent's listings — powers the agent page |

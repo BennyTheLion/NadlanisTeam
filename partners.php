@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $filters = [
     'category' => $_GET['category'] ?? '',
     'region' => $_GET['region'] ?? '',

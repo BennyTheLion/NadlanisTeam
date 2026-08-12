@@ -7,46 +7,26 @@ $flashMsg = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
 
     if ($action === 'toggle_active') {
-        foreach ($data['partners'] as &$p) {
-            if ((int) $p['id'] === $id) {
-                $p['active'] = empty($p['active']);
-            }
-        }
-        unset($p);
-        save_data($data);
+        toggle_partner_active($id);
     } elseif ($action === 'toggle_featured') {
-        foreach ($data['partners'] as &$p) {
-            if ((int) $p['id'] === $id) {
-                $p['featured'] = empty($p['featured']);
-            }
-        }
-        unset($p);
-        save_data($data);
+        toggle_partner_featured($id);
     } elseif ($action === 'delete') {
-        $target = null;
-        foreach ($data['partners'] as $p) {
-            if ((int) $p['id'] === $id) {
-                $target = $p;
-                break;
-            }
-        }
+        $target = find_partner($id);
         if ($target) {
             delete_uploaded_image($target['logo'] ?? null);
             foreach ($target['gallery'] ?? [] as $img) {
                 delete_uploaded_image($img);
             }
-            $data['partners'] = array_values(array_filter($data['partners'], fn($p) => (int) $p['id'] !== $id));
-            save_data($data);
+            delete_partner($id);
             $flashMsg = ['type' => 'success', 'text' => 'השותף נמחק.'];
         }
     }
 }
 
 $filterCategory = $_GET['category'] ?? '';
-$partners = load_data()['partners'];
+$partners = all_partners(false);
 if ($filterCategory !== '') {
     $partners = array_values(array_filter($partners, fn($p) => ($p['category'] ?? '') === $filterCategory));
 }

@@ -1,24 +1,16 @@
 <?php
 require __DIR__ . '/includes/auth.php';
 
-$data = load_data();
-$properties = $data['properties'];
-$agents = $data['agents'];
-$leads = $data['leads'];
+$properties = all_properties(false);
+$agents = all_agents(false);
+$leads = filtered_leads(0, 0, 0);
 
 $activeCount = count(array_filter($properties, fn($p) => ($p['status'] ?? '') === 'available'));
 $soldCount = count(array_filter($properties, fn($p) => ($p['status'] ?? '') === 'sold'));
 $agentCount = count($agents);
 $newLeadsCount = count(array_filter($leads, fn($l) => empty($l['read'])));
 
-$agentsById = [];
-foreach ($agents as $a) {
-    $agentsById[(int) $a['id']] = $a;
-}
-
-$recentLeads = $leads;
-usort($recentLeads, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
-$recentLeads = array_slice($recentLeads, 0, 5);
+$recentLeads = array_slice($leads, 0, 5);
 
 $adminTitle = 'דשבורד';
 require __DIR__ . '/includes/admin-header.php';

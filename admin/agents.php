@@ -6,30 +6,20 @@ $flashMsg = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
 
     if ($action === 'toggle_active') {
-        foreach ($data['agents'] as &$a) {
-            if ((int) $a['id'] === $id) {
-                $a['active'] = empty($a['active']);
-            }
-        }
-        unset($a);
-        save_data($data);
+        toggle_agent_active($id);
     } elseif ($action === 'delete') {
-        $hasListings = (bool) array_filter($data['properties'], fn($p) => (int) ($p['agent_id'] ?? 0) === $id);
-        if ($hasListings) {
+        if (property_count_for_agent($id) > 0) {
             $flashMsg = ['type' => 'error', 'text' => 'לא ניתן למחוק סוכן עם נכסים משויכים. שייכו את הנכסים שלו לסוכן אחר קודם.'];
         } else {
-            $data['agents'] = array_values(array_filter($data['agents'], fn($a) => (int) $a['id'] !== $id));
-            save_data($data);
+            delete_agent($id);
             $flashMsg = ['type' => 'success', 'text' => 'הסוכן נמחק.'];
         }
     }
 }
 
-$agents = load_data()['agents'];
-usort($agents, fn($a, $b) => ($a['sort'] ?? 0) <=> ($b['sort'] ?? 0));
+$agents = all_agents(false);
 
 $adminTitle = 'סוכנים';
 require __DIR__ . '/includes/admin-header.php';

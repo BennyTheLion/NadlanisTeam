@@ -3,7 +3,7 @@
  * מצפה למשתנים (כולם אופציונליים):
  * $pageTitle, $pageDescription, $canonicalPath, $ogImage, $bodyClass, $jsonLd
  */
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = $pageTitle ?? $settings['agency_name'] . ' — ' . $settings['tagline'];
 $pageDescription = $pageDescription ?? 'נדלניס טים — תיווך, שיווק והשקעות נדל״ן בנתניה. ליווי אישי בקנייה, מכירה והשקעה.';
 $canonicalPath = $canonicalPath ?? ($_SERVER['REQUEST_URI'] ?? '/');

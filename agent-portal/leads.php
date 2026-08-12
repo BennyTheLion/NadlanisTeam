@@ -8,27 +8,13 @@ $sourceLabels = ['property' => 'נכס', 'agent' => 'סוכן', 'partner' => 'ש
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
 
-    $ownsTarget = false;
-    foreach ($data['leads'] as $l) {
-        if ((int) $l['id'] === $id && (int) ($l['agent_id'] ?? 0) === $agentId) {
-            $ownsTarget = true;
-            break;
-        }
-    }
+    $ownsTarget = (bool) array_filter(filtered_leads($agentId, 0, 0), fn($l) => (int) $l['id'] === $id);
 
     if ($ownsTarget && $action === 'mark_read') {
-        foreach ($data['leads'] as &$l) {
-            if ((int) $l['id'] === $id) {
-                $l['read'] = true;
-            }
-        }
-        unset($l);
-        save_data($data);
+        mark_lead_read($id);
     } elseif ($ownsTarget && $action === 'delete') {
-        $data['leads'] = array_values(array_filter($data['leads'], fn($l) => (int) $l['id'] !== $id));
-        save_data($data);
+        delete_lead($id);
     }
 
     $qs = http_build_query(['property' => $filterProperty ?: null]);

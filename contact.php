@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'צור קשר — ' . $settings['agency_name'];
 $pageDescription = 'צרו קשר עם נדלניס טים — טלפון, וואטסאפ, אימייל וטופס פנייה. נחזור אליכם עוד היום.';
 require __DIR__ . '/includes/header.php';

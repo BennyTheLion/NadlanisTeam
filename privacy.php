@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'מדיניות פרטיות — ' . $settings['agency_name'];
 $pageDescription = 'מדיניות הפרטיות של ' . $settings['agency_name'] . ' — כיצד אנו אוספים, משתמשים ושומרים על המידע שלכם.';
 $robotsMeta = 'noindex, follow';

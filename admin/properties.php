@@ -7,51 +7,20 @@ $flashMsg = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
 
     if ($action === 'toggle_featured') {
-        foreach ($data['properties'] as &$p) {
-            if ((int) $p['id'] === $id) {
-                $p['featured'] = empty($p['featured']);
-            }
-        }
-        unset($p);
-        save_data($data);
+        toggle_property_featured($id);
     } elseif ($action === 'duplicate') {
-        $source = null;
-        foreach ($data['properties'] as $p) {
-            if ((int) $p['id'] === $id) {
-                $source = $p;
-                break;
-            }
-        }
-        if ($source) {
-            $newId = next_id('property');
-            $data = load_data();
-            $source['id'] = $newId;
-            $source['title'] .= ' (עותק)';
-            $source['status'] = 'draft';
-            $source['featured'] = false;
-            $source['created_at'] = date('Y-m-d H:i:s');
-            $source['images'] = array_map('duplicate_uploaded_image', $source['images'] ?? []);
-            $data['properties'][] = $source;
-            save_data($data);
+        if (duplicate_property($id) !== null) {
             $flashMsg = ['type' => 'success', 'text' => 'הנכס שוכפל כטיוטה.'];
         }
     } elseif ($action === 'delete') {
-        $target = null;
-        foreach ($data['properties'] as $p) {
-            if ((int) $p['id'] === $id) {
-                $target = $p;
-                break;
-            }
-        }
+        $target = find_property($id);
         if ($target) {
             foreach ($target['images'] ?? [] as $img) {
                 delete_uploaded_image($img);
             }
-            $data['properties'] = array_values(array_filter($data['properties'], fn($p) => (int) $p['id'] !== $id));
-            save_data($data);
+            delete_property($id);
             $flashMsg = ['type' => 'success', 'text' => 'הנכס נמחק.'];
         }
     }
@@ -61,7 +30,7 @@ $filterAgent = (int) ($_GET['agent'] ?? 0);
 $filterStatus = $_GET['status'] ?? '';
 $q = trim($_GET['q'] ?? '');
 
-$properties = load_data()['properties'];
+$properties = all_properties(false);
 usort($properties, fn($a, $b) => strcmp($b['created_at'] ?? '', $a['created_at'] ?? ''));
 
 if ($filterAgent > 0) {

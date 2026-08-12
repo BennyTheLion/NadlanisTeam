@@ -74,10 +74,7 @@ if ($errors) {
     back_with_error($redirect, $errors, $_POST);
 }
 
-$leadId = next_id('lead');
-$data = load_data();
-$data['leads'][] = [
-    'id' => $leadId,
+insert_lead([
     'name' => $name,
     'phone' => $phone,
     'email' => $email,
@@ -87,10 +84,7 @@ $data['leads'][] = [
     'partner_id' => $partnerId,
     'service' => $service,
     'source' => in_array($source, ['property', 'agent', 'partner', 'contact', 'home'], true) ? $source : 'contact',
-    'created_at' => date('Y-m-d H:i:s'),
-    'read' => false,
-];
-save_data($data);
+]);
 
 $_SESSION['lead_submits'][] = $now;
 

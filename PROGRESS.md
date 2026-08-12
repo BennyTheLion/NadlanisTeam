@@ -6,10 +6,158 @@
 > Project root: `C:\xampp\htdocs\nadlanisteam\` → `http://localhost/nadlanisteam/`
 >
 > `NadlanisTeam.md` grew past its original 15 sections during this build: §8.8/8.9
-> (mortgage calculator, map view), §17 (Hebrew/RTL/localization standard), and §18
-> (Partners professional network) were all added mid-session at the user's request,
-> alongside updates to §4 (folder tree), §9.2 (admin screens table), and §13 (seed data)
-> to match. It's still the authoritative spec — just not frozen at 15 sections anymore.
+> (mortgage calculator, map view), §17 (Hebrew/RTL/localization standard), §18
+> (Partners professional network), and §19 (agent login/dashboard) were all added
+> mid-session at the user's request, alongside updates to §4 (folder tree), §9.2
+> (admin screens table), and §13 (seed data) to match. It's still the authoritative
+> spec — just not frozen at 15 sections anymore.
+>
+> **§3 (Stack & storage) is now out of date and needs a manual look**: it still says
+> "single JSON file, no database" — that was true until this session's MySQL
+> migration (see the dedicated section below). Data storage is now MySQL via PDO;
+> `data/data.json` is a historical migration source only, no longer read by the live
+> site. `data/seed.json` is still live — it's what "reset demo data" imports from.
+
+## Storage migration: JSON file → MySQL (this session)
+
+The site ran on a single `data/data.json` blob (read/written whole via
+`load_data()`/`save_data()`) from the start of the build through most of this
+session — see the "Decisions made" list below for the historical reasoning (#3, a
+`load_data()`/`save_data()` shared-cache fix; #7-ish region, the `next_id()`-before-
+`load_data()` gotcha). The user explicitly asked to move to a real database
+("BUILD A DATABASE AND START USING IT"), and this was done as a full, one-shot
+migration — not a hybrid — via the same research-then-plan-then-build workflow as
+Partners/agent-portal (plan approved in `EnterPlanMode`, full plan text was in
+`C:\Users\maimo\.claude\plans\effervescent-floating-stream.md` at the time, since
+overwritten by later planning sessions).
+
+**Stack**: MariaDB 10.4 (bundled with this XAMPP install, already running as
+`mysqld.exe`), PDO with prepared statements (`PDO::ATTR_EMULATE_PREPARES => false`
+for native types, `PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC` — **forgetting
+this second one was a real bug caught during verification**: without it PDO returns
+rows with both numeric AND string keys (`FETCH_BOTH` default), which silently
+corrupted anything iterating a hydrated row with `foreach ($row as $col => $val)`,
+e.g. `update_settings()`. Caught by `var_export()`-inspecting a hydrated row during
+manual testing, not by any automated check — worth remembering if a future DB-layer
+change ever removes that connection option). DB name `nadlanisteam`, `root`/no
+password (XAMPP default, matches the project's existing low-ceremony local-dev style
+— these constants live in `includes/config.php` right next to `APP_ROOT`).
+
+**Schema** (`data/schema.sql`, new): six tables — `settings` (single row, `id=1`
+enforced via `CHECK`), `agents`, `properties`, `partners`, `leads`, `testimonials`.
+Array-shaped fields (`areas`, `languages`, `regions`, `services`, `images`,
+`gallery`) are MariaDB `JSON` columns (stored as validated `LONGTEXT` under the
+hood), not normalized child tables — keeps the "field = PHP array" mental model
+intact and avoids a JOIN-heavy rewrite for a site this size. `properties.agent_id`
+is a real `FOREIGN KEY` (no `CASCADE`) — deleting an agent with properties still
+fails, now doubly enforced (PHP pre-check for the friendly Hebrew error message,
+FK as a backstop). `leads.property_id`/`agent_id`/`partner_id` are nullable FKs with
+`ON DELETE SET NULL`, matching the JSON-era behavior where a deleted property/agent/
+partner just left a dangling id that rendered blank.
+
+**Two MySQL reserved words bit the schema on the first `mysql < schema.sql` run**:
+`accessible` and `storage` (both real property boolean-flag names) are reserved
+keywords and caused a syntax error pointing at the *following* line, not themselves
+— confusing until isolated via a bisected single-column `CREATE TABLE` test. Renamed
+to `is_accessible`/`has_storage` in the DB (and `read` → `is_read` for the same
+reason, spotted proactively this time). The PHP-facing field names (`$p['accessible']`,
+`$p['storage']`, `$l['read']`) are unchanged — the hydration layer (see below) maps
+the DB column name back to the app's existing key name, so no template code needed
+to know about the rename.
+
+**`includes/config.php`**: `default_data()`/`data_cache_ref()`/`load_data()`/
+`save_data()`/`next_id()` are gone — replaced by `db(): PDO` (singleton connection)
+and a hydration function per entity (`hydrate_property()`, `hydrate_agent()`, etc.)
+that converts a raw DB row back into exactly the same associative-array shape the
+JSON era produced (`json_decode()` the JSON columns, `(bool)` the flag columns,
+`NULL`→`''` for `lat`/`lng` specifically because `properties.php`'s map-view code
+already tested `$p['lat'] === ''` to decide whether a property has a pin — verified
+this via `grep` before choosing the hydration behavior, not by guessing). The
+existing read functions (`find_property()`, `all_properties()`, `find_agent()`,
+`all_agents()`, `find_agent_by_username()`, `all_partners()`, `find_partner()`,
+`filtered_leads()`) kept their exact names/signatures/return shapes and just got new
+SQL internals — `filter_properties()`, `sort_properties()`, `cities_in_use()`,
+`filter_partners()`, `partner_regions_in_use()`, `partners_serving_region()`,
+`agent_properties()`, `agent_listing_count()` needed **zero changes at all**, since
+they already operated on a PHP array returned by another function, not on storage
+directly. New: `get_settings()`/`update_settings()` (settings is a single DB row now,
+not a `load_data()['settings']` sub-array), `all_testimonials()`, and a full set of
+`insert_*`/`update_*`/`delete_*`/`toggle_*` write functions per entity (documented in
+the plan file at the time; grep `includes/config.php` for `function insert_` /
+`function update_` / `function delete_` / `function toggle_` to see the full list
+live). `import_seed_into_db(string $jsonPath, bool $wipeOnly = false)` truncates all
+five non-settings tables (FK checks off during truncate, back on after) and
+optionally re-imports from a JSON file with explicit ids preserved — this one
+function is reused by both the one-time `migrate.php` (source: `data/data.json`) and
+`admin/settings.php`'s "reset demo data" / "wipe demo data" actions (source:
+`data/seed.json`), so there's exactly one place that knows how to import the JSON
+shape into SQL, not two parallel implementations.
+
+**15 files that used to do "load the whole JSON blob → mutate an array → save the
+whole blob back" (`grep -rl 'save_data(' *.php`) were rewritten** to call the new
+named CRUD functions instead — the diff per file is small and mechanical (e.g.
+`admin/testimonials.php`'s save block went from a 15-line `load_data()`/`foreach`/
+`save_data()` dance to `$id ? update_testimonial($id, $values) :
+insert_testimonial($values);`), validation/HTML/ownership-check logic in each file
+is untouched. A **further ~20 read-only files** that did `load_data()['settings']`
+(nearly every page, for the header/footer) or `load_data()['testimonials']`/
+`['properties']`/etc. also needed a one-line swap to `get_settings()`/
+`all_testimonials()`/`all_properties(false)` — this wasn't originally called out as
+its own task in the plan (the plan's file list only enumerated the *write* sites)
+but is a direct, unavoidable consequence of actually deleting `load_data()` per the
+plan's own final step, since every call site has to stop calling a function that no
+longer exists. Confirmed zero stragglers via
+`grep -rn 'load_data(\|save_data(\|next_id(' *.php` returning nothing, project-wide.
+
+**`migrate.php`** (new, project root): one-time script, run via `php migrate.php`.
+Creates the `nadlanisteam` database if missing, runs `data/schema.sql`, checks
+`agents` row count to refuse re-running accidentally (`--force` overrides), then
+calls `import_seed_into_db()` against `data/data.json`. Verified end-to-end multiple
+times this session (drop DB, re-run, confirm row counts match, confirm Hebrew text
+and JSON arrays survive `json_decode`/hydration byte-for-byte via `var_export()`
+spot-checks, confirm the pre-existing `admin_hash` and the two agent-portal test
+accounts' `password_hash` values carried over unchanged — meaning the `uri.test`/
+`michal.test` credentials from the agent-portal work still log in post-migration
+with no re-setup needed).
+
+**Verification** (this was the most heavily browser/CLI-tested piece of work this
+session — see below for why): direct PHP CLI smoke tests of every `insert_*`/
+`update_*`/`delete_*`/`toggle_*` function in isolation before touching the browser
+at all (caught nothing beyond the `FETCH_ASSOC` bug above — the CRUD layer was
+right on the first real try once that was fixed); then full browser-driven
+end-to-end passes: homepage/properties list/filters/map view/property detail/agent
+page/partner page all render identically to the JSON era; a real lead submitted
+through the actual public form on `property.php` landed in MySQL with correct
+`property_id`/`agent_id` and showed up correctly in both `admin/leads.php` and the
+owning agent's `agent-portal/leads.php`; full admin CRUD exercised through the real
+admin UI (create/edit/toggle-featured/duplicate/delete a property); agent-portal
+login/dashboard/scoped-list/cross-agent-isolation re-verified against the new SQL
+backend (a forged cross-agent delete POST was still silently rejected, same as
+under JSON); `admin/settings.php`'s "wipe demo data" then "reset demo data" round-
+trip tested live (wipe → confirmed all 5 tables empty via direct SQL, `settings`
+row untouched → reset → confirmed all counts restored).
+
+**One real gap found and fixed during this verification, unrelated to the SQL work
+itself**: `data/seed.json` (the "reset demo data" source) was a stale snapshot from
+*before* the agent-portal login feature existed, so it had no `username`/
+`password_hash` for any agent — "reset demo data" was silently wiping the
+`uri.test`/`michal.test` test credentials back to "no access" every time (this was
+true under the old JSON-era `reset_demo` too, not a new bug — it fully replaced
+`$data['agents']` with `$seed['agents']` the same way). Fixed by re-exporting
+`data/seed.json` fresh from the live (post-migration) DB state via `get_settings()`/
+`all_agents()`/`all_properties()`/`all_partners()`/`all_testimonials()`, so it now
+includes the working test credentials and the real admin hash. Re-verified
+"reset demo data" afterward — credentials now survive a reset.
+
+**Browser-tool note carried over from the agent-login work, relevant again here**:
+verifying `admin/settings.php`'s wipe/reset actions and admin property CRUD was done
+by reusing an admin session that was already active in the browser profile (see the
+note in the agent-portal section below) plus direct `fetch()` calls with the page's
+own CSRF token, rather than filling in the `admin/login.php` form — that page is
+still off-limits to automated navigation. If a future session starts with no live
+admin session in the browser, admin-side browser verification will need a different
+approach (the user logs in manually, or verification stays at the code/lint/CLI
+level).
 
 ## Partners system (§18 in NadlanisTeam.md) — built via plan mode
 

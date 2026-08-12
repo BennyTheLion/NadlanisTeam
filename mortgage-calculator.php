@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'מחשבון משכנתא — ' . $settings['agency_name'];
 $pageDescription = 'חשבו הערכת החזר חודשי למשכנתא לפי מחיר הנכס, הון עצמי, ריבית ותקופת ההלוואה.';
 require __DIR__ . '/includes/header.php';

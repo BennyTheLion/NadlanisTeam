@@ -1,7 +1,7 @@
 <?php
 require __DIR__ . '/includes/config.php';
 
-$settings = load_data()['settings'];
+$settings = get_settings();
 $pageTitle = 'הצוות שלנו — ' . $settings['agency_name'];
 $pageDescription = 'הכירו את סוכני נדלניס טים בנתניה — ליווי אישי בקנייה, מכירה והשקעות נדל״ן.';
 require __DIR__ . '/includes/header.php';

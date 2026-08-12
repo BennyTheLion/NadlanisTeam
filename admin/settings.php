@@ -3,32 +3,31 @@ require __DIR__ . '/includes/auth.php';
 
 $errors = [];
 $successMsg = null;
-$settings = load_data()['settings'];
+$settings = get_settings();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
-    $data = load_data();
 
     if ($action === 'save_settings') {
-        $s = &$data['settings'];
-        $s['agency_name'] = trim($_POST['agency_name'] ?? '') ?: $s['agency_name'];
-        $s['tagline'] = trim($_POST['tagline'] ?? '');
-        $s['phone'] = trim($_POST['phone'] ?? '');
-        $s['whatsapp'] = trim($_POST['whatsapp'] ?? '');
-        $s['email'] = trim($_POST['email'] ?? '');
-        $s['address'] = trim($_POST['address'] ?? '');
-        $s['facebook'] = trim($_POST['facebook'] ?? '');
-        $s['instagram'] = trim($_POST['instagram'] ?? '');
-        $s['hero_title'] = trim($_POST['hero_title'] ?? '');
-        $s['hero_sub'] = trim($_POST['hero_sub'] ?? '');
-        $s['about_text'] = trim(str_replace("\r\n", "\n", $_POST['about_text'] ?? ''));
-        $s['stat_years'] = (int) ($_POST['stat_years'] ?? 0);
-        $s['stat_deals'] = (int) ($_POST['stat_deals'] ?? 0);
-        $s['stat_clients'] = (int) ($_POST['stat_clients'] ?? 0);
-        unset($s);
-        save_data($data);
+        $s = [
+            'agency_name' => trim($_POST['agency_name'] ?? '') ?: $settings['agency_name'],
+            'tagline' => trim($_POST['tagline'] ?? ''),
+            'phone' => trim($_POST['phone'] ?? ''),
+            'whatsapp' => trim($_POST['whatsapp'] ?? ''),
+            'email' => trim($_POST['email'] ?? ''),
+            'address' => trim($_POST['address'] ?? ''),
+            'facebook' => trim($_POST['facebook'] ?? ''),
+            'instagram' => trim($_POST['instagram'] ?? ''),
+            'hero_title' => trim($_POST['hero_title'] ?? ''),
+            'hero_sub' => trim($_POST['hero_sub'] ?? ''),
+            'about_text' => trim(str_replace("\r\n", "\n", $_POST['about_text'] ?? '')),
+            'stat_years' => (int) ($_POST['stat_years'] ?? 0),
+            'stat_deals' => (int) ($_POST['stat_deals'] ?? 0),
+            'stat_clients' => (int) ($_POST['stat_clients'] ?? 0),
+        ];
+        update_settings($s);
         $successMsg = 'ההגדרות נשמרו.';
-        $settings = $data['settings'];
+        $settings = array_merge($settings, $s);
     } elseif ($action === 'change_password') {
         $current = (string) ($_POST['current_password'] ?? '');
         $new = (string) ($_POST['new_password'] ?? '');
@@ -41,32 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
         } elseif ($new !== $confirm) {
             $errors['new_password_confirm'] = 'אימות הסיסמה אינו תואם.';
         } else {
-            $data['settings']['admin_hash'] = password_hash($new, PASSWORD_DEFAULT);
-            save_data($data);
+            update_settings(['admin_hash' => password_hash($new, PASSWORD_DEFAULT)]);
             $successMsg = 'הסיסמה עודכנה.';
         }
     } elseif ($action === 'reset_demo') {
         $seedPath = APP_ROOT . '/data/seed.json';
         if (is_file($seedPath)) {
-            $seed = json_decode(file_get_contents($seedPath), true);
-            $data['agents'] = $seed['agents'] ?? [];
-            $data['properties'] = $seed['properties'] ?? [];
-            $data['partners'] = $seed['partners'] ?? [];
-            $data['testimonials'] = $seed['testimonials'] ?? [];
-            $data['leads'] = [];
-            $data['counters'] = $seed['counters'] ?? $data['counters'];
-            save_data($data);
+            import_seed_into_db($seedPath);
             $successMsg = 'נתוני הדמו נטענו מחדש.';
         } else {
             $errors['_general'] = 'לא נמצא קובץ נתוני דמו לשחזור.';
         }
     } elseif ($action === 'wipe_demo') {
-        $data['agents'] = [];
-        $data['properties'] = [];
-        $data['partners'] = [];
-        $data['testimonials'] = [];
-        $data['leads'] = [];
-        save_data($data);
+        import_seed_into_db(APP_ROOT . '/data/seed.json', wipeOnly: true);
         $successMsg = 'נתוני הדמו נמחקו.';
     }
 }

@@ -7,62 +7,21 @@ $flashMsg = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_check()) {
     $action = $_POST['action'] ?? '';
     $id = (int) ($_POST['id'] ?? 0);
-    $data = load_data();
-
-    $ownsTarget = false;
-    foreach ($data['properties'] as $p) {
-        if ((int) $p['id'] === $id && (int) ($p['agent_id'] ?? 0) === $agentId) {
-            $ownsTarget = true;
-            break;
-        }
-    }
+    $target = find_property($id);
+    $ownsTarget = $target && (int) ($target['agent_id'] ?? 0) === $agentId;
 
     if ($ownsTarget && $action === 'toggle_featured') {
-        foreach ($data['properties'] as &$p) {
-            if ((int) $p['id'] === $id) {
-                $p['featured'] = empty($p['featured']);
-            }
-        }
-        unset($p);
-        save_data($data);
+        toggle_property_featured($id);
     } elseif ($ownsTarget && $action === 'duplicate') {
-        $source = null;
-        foreach ($data['properties'] as $p) {
-            if ((int) $p['id'] === $id) {
-                $source = $p;
-                break;
-            }
-        }
-        if ($source) {
-            $newId = next_id('property');
-            $data = load_data();
-            $source['id'] = $newId;
-            $source['title'] .= ' (עותק)';
-            $source['status'] = 'draft';
-            $source['featured'] = false;
-            $source['created_at'] = date('Y-m-d H:i:s');
-            $source['agent_id'] = $agentId;
-            $source['images'] = array_map('duplicate_uploaded_image', $source['images'] ?? []);
-            $data['properties'][] = $source;
-            save_data($data);
+        if (duplicate_property($id) !== null) {
             $flashMsg = ['type' => 'success', 'text' => 'הנכס שוכפל כטיוטה.'];
         }
     } elseif ($ownsTarget && $action === 'delete') {
-        $target = null;
-        foreach ($data['properties'] as $p) {
-            if ((int) $p['id'] === $id) {
-                $target = $p;
-                break;
-            }
+        foreach ($target['images'] ?? [] as $img) {
+            delete_uploaded_image($img);
         }
-        if ($target) {
-            foreach ($target['images'] ?? [] as $img) {
-                delete_uploaded_image($img);
-            }
-            $data['properties'] = array_values(array_filter($data['properties'], fn($p) => (int) $p['id'] !== $id));
-            save_data($data);
-            $flashMsg = ['type' => 'success', 'text' => 'הנכס נמחק.'];
-        }
+        delete_property($id);
+        $flashMsg = ['type' => 'success', 'text' => 'הנכס נמחק.'];
     }
 }
 
