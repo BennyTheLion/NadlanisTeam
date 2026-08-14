@@ -86,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="stylesheet" href="<?= e(asset_url('admin/assets/admin.css')) ?>">
 </head>
 <body class="admin-body">
-<div class="admin-login-wrap">
+<main class="admin-login-wrap">
   <div class="admin-login-card">
     <p class="admin-login-logo" dir="ltr">Nadlanis<span style="color:var(--blue);">Team</span></p>
     <h1>כניסת מנהל</h1>
@@ -114,7 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button type="submit" class="btn btn-primary btn-block" <?= $isLocked ? 'disabled' : '' ?>>כניסה</button>
     </form>
   </div>
-</div>
+</main>
 <script>
 document.querySelectorAll('.password-toggle').forEach(function (btn) {
   btn.addEventListener('click', function () {

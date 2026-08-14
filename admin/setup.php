@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <link rel="stylesheet" href="<?= e(asset_url('admin/assets/admin.css')) ?>">
 </head>
 <body class="admin-body">
-<div class="admin-login-wrap">
+<main class="admin-login-wrap">
   <div class="admin-login-card">
     <p class="admin-login-logo" dir="ltr">Nadlanis<span style="color:var(--blue);">Team</span></p>
     <h1>הגדרה ראשונית</h1>
@@ -83,6 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button type="submit" class="btn btn-primary btn-block">יצירת חשבון מנהל</button>
     </form>
   </div>
-</div>
+</main>
 </body>
 </html>

@@ -20,6 +20,7 @@ require __DIR__ . '/includes/header.php';
       <?php
         $leadSource = 'contact';
         $leadHeading = 'השאירו פרטים ונחזור אליכם';
+        $leadHeadingTag = 'h2';
         include __DIR__ . '/includes/lead-form.php';
       ?>
     </div>

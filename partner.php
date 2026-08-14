@@ -62,8 +62,8 @@ $backUrl = safe_internal_path($_GET['back'] ?? null, url('partners.php'));
     <?php if (!empty($partner['gallery'])): ?>
       <h2 class="section-title" style="font-size:1.15rem;">גלריה</h2>
       <div class="gallery-thumbs" style="position:static; height:auto;">
-        <?php foreach ($partner['gallery'] as $img): ?>
-          <img src="<?= e(media_url($img)) ?>" alt="" style="width:110px; height:80px; object-fit:cover; border-radius:var(--radius-sm);">
+        <?php foreach ($partner['gallery'] as $gi => $img): ?>
+          <img src="<?= e(media_url($img)) ?>" alt="<?= e('תמונה ' . ($gi + 1) . ' מגלריית ' . $partner['name']) ?>" style="width:110px; height:80px; object-fit:cover; border-radius:var(--radius-sm);">
         <?php endforeach; ?>
       </div>
     <?php endif; ?>

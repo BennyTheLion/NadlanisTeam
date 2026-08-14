@@ -10,6 +10,7 @@ $leadAgentId = $leadAgentId ?? null;
 $leadPartnerId = $leadPartnerId ?? null;
 $leadServiceOptions = $leadServiceOptions ?? [];
 $leadHeading = $leadHeading ?? 'השאירו פרטים ונחזור אליכם';
+$leadHeadingTag = $leadHeadingTag ?? 'h3';
 
 $prefill = $_SESSION['lead_prefill'] ?? [];
 $errors = $_SESSION['lead_errors'] ?? [];
@@ -23,7 +24,7 @@ $justSent = isset($_GET['sent']) && $_GET['sent'] === '1';
     <?php if (!empty($errors['_general'])): ?>
       <p class="alert-box alert-error"><?= e($errors['_general']) ?></p>
     <?php endif; ?>
-    <h3><?= e($leadHeading) ?></h3>
+    <<?= $leadHeadingTag ?>><?= e($leadHeading) ?></<?= $leadHeadingTag ?>>
     <form method="post" action="<?= e(url('lead-submit.php')) ?>" novalidate>
       <?= csrf_field() ?>
       <input type="hidden" name="redirect" value="<?= e($_SERVER['REQUEST_URI'] ?? url('contact.php')) ?>">

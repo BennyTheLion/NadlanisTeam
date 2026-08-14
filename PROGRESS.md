@@ -767,13 +767,73 @@ identified:
 Same standing caveat as every other legal page on this site: generic/placeholder
 phrasing, needs a lawyer's review before the site goes live — not legal advice.
 
+## Accessibility / Lighthouse pass
+
+Ran real Lighthouse accessibility audits (not just manual code review) via
+`npx lighthouse --only-categories=accessibility --chrome-flags="--headless=new
+--no-sandbox --disable-gpu"`, using the system's actual Chrome
+(`C:\Program Files\Google\Chrome\Application\chrome.exe` via `CHROME_PATH`) against
+the local XAMPP server. Note: `chrome-launcher`'s temp-profile cleanup throws an `EPERM`
+on this Windows/sandboxed setup after every run (`rmSync` permission error) — cosmetic,
+the JSON report is written successfully before that happens, so ignore the stack trace
+and read the output file.
+
+Findings and fixes, across index/properties/property/agents/agent/contact/partner/admin
+login+setup:
+
+- [x] **`button-name`** — `property.php`'s gallery-thumbnail `<button>`s wrapped an
+  `img alt=""` with no other text/label, so each thumbnail was announced as nothing to
+  screen readers. Added `aria-label="תמונה X מתוך N"` per thumbnail.
+- [x] **`landmark-one-main`** — `admin/login.php` and `admin/setup.php` are standalone
+  templates (don't go through `includes/header.php`/`footer.php`, which already has a
+  `<main>`), so they had no main landmark. Changed their outer `<div class="admin-login-wrap">`
+  to `<main class="admin-login-wrap">`.
+- [x] **`heading-order`** — `agents.php` jumped `h1` → `h3` (the agent-card grid's `h3`
+  names, no `h2` in between); `contact.php` jumped `h1` → `h3` (the shared
+  `includes/lead-form.php` heading). Fixed by: adding a new `.sr-only` utility to
+  `style.css` (standard clip-rect pattern) and a `<h2 class="sr-only">רשימת הסוכנים</h2>`
+  before the grid on `agents.php`; making `lead-form.php`'s heading tag configurable via
+  `$leadHeadingTag` (defaults to `h3`, matching its existing usage on
+  agent.php/partner.php/property.php where a `h2`/`h3` already precedes it) and passing
+  `$leadHeadingTag = 'h2'` from `contact.php`, the one page where the form has no other
+  heading before it.
+- [x] **Non-descriptive `alt=""` on real content images** — `partner.php`'s gallery
+  images (work-sample photos, not decorative) had `alt=""`; screen readers would skip
+  them entirely. Added `alt="תמונה X מגלריית {partner name}"` per image. Left `alt=""`
+  as-is everywhere else it appears (agent avatars, partner logos, property-card agent
+  thumbnails) — in every one of those cases the same name is already right next to the
+  image as visible text, so `alt=""` there is the *correct* WCAG pattern (avoids a
+  screen reader announcing the same name twice), not a bug.
+- [x] **`color-contrast`** — systemic, not a one-off: `--blue` (#07A7E3, the brand cyan)
+  against white text was 2.75:1, `--whatsapp` (#1EA855) was 3.09:1, `--ink-3` (muted gray,
+  breadcrumbs/labels/captions) was 3.5–3.8:1, and one hardcoded amber badge (`#E8A33D`,
+  `.partner-badge-featured`) was 2.16:1 — all below the 4.5:1 WCAG AA text minimum, and
+  used in ~20+ places (buttons, badges, active nav/tabs, admin-nav, pagination). This is
+  a brand-color change with real visual impact, so it went through the user rather than
+  getting silently patched — user picked "apply the full fix now." Computed AA-safe
+  replacements (binary-searched to ~4.5–5:1 against white, preserving hue) and updated
+  the tokens directly in `:root`: `--blue: #07A7E3→#0577A2`, `--blue-hover:
+  #0589B8→#046283` (proportionally darkened so hover stays darker than resting state),
+  `--ink-3: #7B838C→#697078`, `--whatsapp: #1EA855→#188644`, and the hardcoded amber
+  `#E8A33D→#9A6C29`. `--blue-deep`/`--blue-tint`/`--blue-dim` (footer, already-dark, or
+  already-light-on-dark-bg contexts) were untouched — not flagged, no reason to touch them.
+  Also found and fixed independently (no brand-color impact, so just fixed directly):
+  `.footer-bottom`/`.footer-bottom a`'s `rgba(255,255,255,.45)` on the dark footer bg
+  was 4.26:1, bumped the alpha to `.5` (→4.94:1).
+- Verified via re-running Lighthouse after each fix, not just eyeballing the CSS math:
+  every page audited (index/properties/property/agents/agent/contact/partner/admin
+  login/admin setup) now scores **100** on the accessibility category. Also did a
+  browser screenshot sanity check on the new blue/WhatsApp-green — still clearly reads
+  as the same brand hues, just a shade deeper, not a different color.
+
 ## How to resume
 
 Say "read PROGRESS.md and continue" (or similar). Core Phase 6 items (sitemap.xml,
 robots.txt, mobile-overflow fixes, RTL/localization standard) are done — see below.
-Still open: JSON-LD on pages beyond `index.php`/`property.php` (not spec-required, spec
-§11 only asks for those two), a full accessibility/Lighthouse pass, and a final read-through
-of §15 Acceptance criteria + the new §17 Hebrew/RTL criteria against the live site.
+The accessibility/Lighthouse pass is now done too (see above — 100/100 across all
+audited pages). Still open: JSON-LD on pages beyond `index.php`/`property.php` (not
+spec-required, spec §11 only asks for those two), and a final read-through of §15
+Acceptance criteria + the new §17 Hebrew/RTL criteria against the live site.
 
 The agent-level login/dashboard system (see the dedicated section above) is now built,
 browser-verified end-to-end, and documented in `NadlanisTeam.md` §19.

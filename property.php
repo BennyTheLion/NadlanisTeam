@@ -56,7 +56,7 @@ $backUrl = safe_internal_path($_GET['back'] ?? null, url('properties.php'));
     <?php if (count($images) > 1): ?>
       <div class="gallery-thumbs">
         <?php foreach ($images as $i => $img): ?>
-          <button type="button" data-thumb data-full="<?= e(media_url($img)) ?>" data-alt="<?= e($p['title']) ?>" aria-current="<?= $i === 0 ? 'true' : 'false' ?>">
+          <button type="button" data-thumb data-full="<?= e(media_url($img)) ?>" data-alt="<?= e($p['title']) ?>" aria-current="<?= $i === 0 ? 'true' : 'false' ?>" aria-label="<?= e('תמונה ' . ($i + 1) . ' מתוך ' . count($images)) ?>">
             <img src="<?= e(media_url($img)) ?>" alt="">
           </button>
         <?php endforeach; ?>
