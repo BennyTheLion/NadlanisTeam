@@ -729,6 +729,44 @@ not visually present but covered by something else), clicking אישור hides i
 localStorage flag, and it stays hidden across a fresh page load afterward. Both new pages
 render with correct titles/content, and the footer shows all four legal links.
 
+## Real-estate-specific legal items (beyond the generic 4 pages above)
+
+User asked whether a real estate site needs legal documents beyond the generic
+privacy/terms/cookies/accessibility set. For an Israeli real estate brokerage site,
+identified:
+
+- [x] **Section 11 database notice (חוק הגנת הפרטיות, תשמ״א-1981, סעיף 11).** Any form
+  collecting personal data must disclose, at/near the point of collection: whether
+  supplying the data is a legal duty or voluntary, the purpose of the database, and who
+  the data may be transferred to. `privacy.php` described data collection in general
+  terms but never made this specific disclosure. Added an explicit "הודעה לפי סעיף 11"
+  section to `privacy.php`, and a short inline notice line in `includes/lead-form.php`
+  (shared by all lead forms — contact/property/agent/partner) right under the consent
+  checkbox, linking to that section. This is the one item here with real regulatory
+  weight — a Section 11 notice is a statutory requirement, not just good practice.
+- [x] **Broker license disclosure (חוק המתווכים במקרקעין, תשנ״ו-1996).** Israeli real
+  estate brokers must be licensed, and commission is only legally collectible with a
+  signed written client engagement predating the deal. No real license numbers exist in
+  `data.json` (`agents[].license` doesn't exist as a field) — fabricating numbers would
+  be worse than omitting them, so this was **not** turned into per-agent license fields.
+  Instead added a short "פעילות תיווך כדין" clause to `terms.php` stating the agency's
+  brokerage activity is conducted by licensed brokers under the law, with license numbers
+  "available on request" — true regardless of what the actual numbers are, and doesn't
+  fabricate data. If real per-agent license numbers become available, the natural next
+  step is a `license` field in the agent admin form + display on `agent.php`.
+- [x] Already covered, no new work needed: the **listings-accuracy disclaimer**
+  ("אינו מהווה הצעה מחייבת") and **copyright/IP notice** the user's question raised were
+  both already present in `terms.php` (sections "תוכן האתר" and "קניין רוחני") from the
+  earlier `privacy.php`/`terms.php` pass — confirmed by reading the file rather than
+  re-adding duplicate clauses.
+- Deliberately **not** built: a consumer "right of cancellation" page and a US-style
+  fair-housing statement — neither is a standard requirement for an Israeli lead-gen
+  brokerage site (right of cancellation applies to e-commerce transactions; fair-housing
+  statements aren't a formal Israeli web requirement the way they are in the US).
+
+Same standing caveat as every other legal page on this site: generic/placeholder
+phrasing, needs a lawyer's review before the site goes live — not legal advice.
+
 ## How to resume
 
 Say "read PROGRESS.md and continue" (or similar). Core Phase 6 items (sitemap.xml,

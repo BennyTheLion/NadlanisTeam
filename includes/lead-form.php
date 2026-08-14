@@ -75,6 +75,11 @@ $justSent = isset($_GET['sent']) && $_GET['sent'] === '1';
         <span>אני מאשר/ת יצירת קשר</span>
       </label>
 
+      <p style="font-size:0.85rem; color:var(--ink-3); margin-top:6px;">
+        מסירת הפרטים אינה חובה שבדין והיא לצורך יצירת קשר בעניין פנייה זו בלבד — ראו
+        <a href="<?= e(url('privacy.php') . '#section-11') ?>">מדיניות הפרטיות</a>.
+      </p>
+
       <button type="submit" class="btn btn-primary btn-block" style="margin-top:16px;">שליחת פנייה</button>
     </form>
   <?php endif; ?>
