@@ -65,6 +65,23 @@ foreach ($results as $p) {
     ];
 }
 
+if ($pageResults) {
+    $listItems = [];
+    foreach ($pageResults as $i => $p) {
+        $listItems[] = [
+            '@type' => 'ListItem',
+            'position' => $i + 1,
+            'url' => absolute_url('property.php?id=' . $p['id']),
+            'name' => $p['title'],
+        ];
+    }
+    $jsonLd = [
+        '@context' => 'https://schema.org',
+        '@type' => 'ItemList',
+        'itemListElement' => $listItems,
+    ];
+}
+
 require __DIR__ . '/includes/header.php';
 ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">

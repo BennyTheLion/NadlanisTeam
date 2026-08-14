@@ -884,13 +884,48 @@ site, with real checks (curl/Node/browser), not just re-reading old phase notes:
   session touched that logic): #2 (6-tap flow), #5 (`cities_in_use()` auto-expansion),
   #7 (full admin CRUD workflow).
 
+## JSON-LD beyond index/property (optional polish, not spec-required)
+
+Spec §11 only requires JSON-LD on `index.php`/`property.php` (both already had it).
+Extended the same pattern — `$jsonLd` array set before `require .../header.php`, which
+already renders it (`includes/header.php:42-44`) — to the rest of the indexable content
+pages, since it costs nothing and only helps search-result richness:
+
+- **`agent.php`** — `RealEstateAgent` (name, role, bio, phone/email, `areaServed`,
+  `knowsLanguage`, `worksFor` the agency, self `url`).
+- **`partner.php`** — `LocalBusiness` (name, description, phone/email, `areaServed`,
+  `aggregateRating` when a rating exists). Fixed a semantic mixup while at it: `url`
+  is now this page's own canonical URL (matching `property.php`'s existing convention)
+  and the partner's external site — previously incorrectly in `url` — moved to `sameAs`,
+  which is what schema.org actually intends that field for.
+- **`properties.php` / `agents.php` / `partners.php`** (list pages) — `ItemList` of
+  `ListItem`s pointing at each result's own page, built from data already computed
+  earlier in each file (`$pageResults`/`$agents`/`$results`) rather than re-querying.
+  Wrapped in `if ($results)` etc. so an empty filtered result set doesn't emit a pointless
+  empty `ItemList`. `agents.php` needed its `all_agents(true)` call moved earlier (it was
+  previously fetched *after* the `header.php` include) so the data exists in time to build
+  the JSON-LD before the header renders it.
+- Added `absolute_url()` to `includes/config.php` (wraps the existing `url()` and
+  prepends scheme+host) since `property.php`'s pre-existing JSON-LD had been building an
+  absolute URL inline via raw `$_SERVER` reads — about to be duplicated 5 more times, so
+  factored out rather than copy-pasted again. Left `property.php`'s own inline computation
+  alone (it uses `$_SERVER['REQUEST_URI']` for an exact self-referential URL including
+  query params like `&back=`, which isn't quite the same thing `absolute_url()` does for
+  an *id-constructed* URL) rather than touching already-verified working code without cause.
+- Verified by curling every page and parsing the actual rendered `<script
+  type="application/ld+json">` block as JSON (not just eyeballing the PHP) — all 5 new
+  pages plus the 2 pre-existing ones parse as valid JSON with correct `@type`s and
+  resolving absolute URLs; empty-result edge cases (`agents.php` with no active agents,
+  a filter combo with zero matches) return 200 with no new PHP warnings in the Apache
+  error log.
+
 ## How to resume
 
 Say "read PROGRESS.md and continue" (or similar). Core Phase 6 items (sitemap.xml,
 robots.txt, mobile-overflow fixes, RTL/localization standard) are done — see below.
-The accessibility/Lighthouse pass and the §15/§17 acceptance read-through are now done
-too (see both sections above). Only remaining open item: JSON-LD on pages beyond
-`index.php`/`property.php` (not spec-required, spec §11 only asks for those two).
+The accessibility/Lighthouse pass, the §15/§17 acceptance read-through, and the JSON-LD
+extension are now all done (see the three sections above). No open items remain from
+this build's spec; anything further is new-feature territory, not finishing the spec.
 
 The agent-level login/dashboard system (see the dedicated section above) is now built,
 browser-verified end-to-end, and documented in `NadlanisTeam.md` §19.

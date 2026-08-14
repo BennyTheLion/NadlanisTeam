@@ -44,6 +44,13 @@ function url(string $path = ''): string
     return ($base === '' ? '' : $base) . '/' . $path;
 }
 
+/** בונה URL מוחלט (עם דומיין), למשל לצורך JSON-LD */
+function absolute_url(string $path = ''): string
+{
+    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    return $scheme . ($_SERVER['HTTP_HOST'] ?? '') . url($path);
+}
+
 /** מוודא שנתיב הוא יחסי לאתר עצמו בלבד (מונע open redirect); מחזיר $fallback אחרת */
 function safe_internal_path(?string $path, string $fallback): string
 {

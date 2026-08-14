@@ -16,6 +16,23 @@ $initials = mb_substr($partner['name'], 0, 1);
 $pageTitle = $partner['name'] . ' — ' . $cat['label'] . ' | ' . get_settings()['agency_name'];
 $pageDescription = $partner['description_short'] ?: ($partner['name'] . ', ' . $cat['label']);
 $ogImage = media_url($partner['logo'] ?? null);
+$jsonLd = array_filter([
+    '@context' => 'https://schema.org',
+    '@type' => 'LocalBusiness',
+    'name' => $partner['name'],
+    'description' => $partner['description_short'] ?: ($partner['description_full'] ?? null),
+    'telephone' => $partner['phone'] ?? null,
+    'email' => $partner['email'] ?? null,
+    'url' => absolute_url('partner.php?id=' . $partner['id']),
+    'sameAs' => $partner['website'] ?? null,
+    'image' => $partner['logo'] ? $ogImage : null,
+    'areaServed' => $partner['regions'] ?? [],
+    'aggregateRating' => !empty($partner['rating']) ? [
+        '@type' => 'AggregateRating',
+        'ratingValue' => $partner['rating'],
+        'bestRating' => 5,
+    ] : null,
+]);
 require __DIR__ . '/includes/header.php';
 
 $backUrl = safe_internal_path($_GET['back'] ?? null, url('partners.php'));

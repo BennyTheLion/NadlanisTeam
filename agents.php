@@ -4,9 +4,25 @@ require __DIR__ . '/includes/config.php';
 $settings = get_settings();
 $pageTitle = 'הצוות שלנו — ' . $settings['agency_name'];
 $pageDescription = 'הכירו את סוכני נדלניס טים בנתניה — ליווי אישי בקנייה, מכירה והשקעות נדל״ן.';
-require __DIR__ . '/includes/header.php';
 
 $agents = all_agents(true);
+if ($agents) {
+    $listItems = [];
+    foreach ($agents as $i => $a) {
+        $listItems[] = [
+            '@type' => 'ListItem',
+            'position' => $i + 1,
+            'url' => absolute_url('agent.php?id=' . $a['id']),
+            'name' => $a['name'],
+        ];
+    }
+    $jsonLd = [
+        '@context' => 'https://schema.org',
+        '@type' => 'ItemList',
+        'itemListElement' => $listItems,
+    ];
+}
+require __DIR__ . '/includes/header.php';
 ?>
 
 <div class="page-head">

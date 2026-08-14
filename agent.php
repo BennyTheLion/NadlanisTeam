@@ -13,6 +13,20 @@ if (!$a) {
 $pageTitle = $a['name'] . ' — סוכן נדל״ן בנתניה | נדלניס טים';
 $pageDescription = $a['bio'] ?: ($a['name'] . ', ' . $a['role'] . ' בנדלניס טים.');
 $ogImage = media_url($a['photo'] ?? null);
+$jsonLd = array_filter([
+    '@context' => 'https://schema.org',
+    '@type' => 'RealEstateAgent',
+    'name' => $a['name'],
+    'url' => absolute_url('agent.php?id=' . $a['id']),
+    'jobTitle' => $a['role'],
+    'description' => $a['bio'] ?: null,
+    'telephone' => $a['phone'] ?? null,
+    'email' => $a['email'] ?? null,
+    'image' => $a['photo'] ? $ogImage : null,
+    'areaServed' => $a['areas'] ?? [],
+    'knowsLanguage' => $a['languages'] ?? [],
+    'worksFor' => ['@type' => 'Organization', 'name' => get_settings()['agency_name']],
+]);
 require __DIR__ . '/includes/header.php';
 
 $filters = ['deal' => $_GET['deal'] ?? '', 'type' => $_GET['type'] ?? ''];

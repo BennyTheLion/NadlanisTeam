@@ -17,6 +17,23 @@ $results = filter_partners($allPartners, $filters);
 $categoryLabel = $filters['category'] !== '' ? partner_category_label($filters['category']) : '';
 $pageTitle = ($categoryLabel ? $categoryLabel . ' — ' : '') . 'השותפים שלנו — ' . $settings['agency_name'];
 $pageDescription = 'אנחנו משתפים פעולה עם אנשי מקצוע וחברות מובילים בתחומי הנדל״ן, המשפט, המימון והבנייה, כדי להעניק ללקוחות שלנו מעטפת מקצועית לאורך כל הדרך.';
+
+if ($results) {
+    $listItems = [];
+    foreach ($results as $i => $p) {
+        $listItems[] = [
+            '@type' => 'ListItem',
+            'position' => $i + 1,
+            'url' => absolute_url('partner.php?id=' . $p['id']),
+            'name' => $p['name'],
+        ];
+    }
+    $jsonLd = [
+        '@context' => 'https://schema.org',
+        '@type' => 'ItemList',
+        'itemListElement' => $listItems,
+    ];
+}
 require __DIR__ . '/includes/header.php';
 
 $featured = $hasFilters ? [] : array_values(array_filter($allPartners, fn($p) => !empty($p['featured'])));
