@@ -51,7 +51,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'httponly' => $params['httponly'],
                     'samesite' => $params['samesite'] ?: 'Lax',
                 ]);
-                ini_set('session.gc_maxlifetime', (string) $lifetime);
             }
 
             $redirect = $_POST['redirect'] ?? '';

@@ -47,7 +47,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'httponly' => $params['httponly'],
                     'samesite' => $params['samesite'] ?: 'Lax',
                 ]);
-                ini_set('session.gc_maxlifetime', (string) $lifetime);
             }
 
             set_user_last_login($user['id']);

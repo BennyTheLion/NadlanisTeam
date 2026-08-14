@@ -826,14 +826,71 @@ login+setup:
   browser screenshot sanity check on the new blue/WhatsApp-green — still clearly reads
   as the same brand hues, just a shade deeper, not a different color.
 
+## §15/§17 acceptance-criteria read-through
+
+Went through §15's 11 acceptance criteria + §17's RTL-specific criteria against the live
+site, with real checks (curl/Node/browser), not just re-reading old phase notes:
+
+- [x] **#8 `data/data.json` → 403.** `curl -o /dev/null -w '%{http_code}'` confirmed.
+- [x] **#3 one agent per listing, reciprocal on the agent page.** Scripted check against
+  `data.json`: all 9 properties have a valid `agent_id` referencing a real agent, and
+  `agent_properties()` (`includes/config.php`) is a plain filter by that same field — so
+  agent.php always lists exactly the properties that point back to it, by construction.
+- [x] **#4 filtered URL is shareable.** `curl` to `properties.php?deal=sale&rooms=3&city=...`
+  returns 200 with the matching radio pre-`checked` — confirms GET-param state round-trips.
+- [x] **#6 lead form: stores + Hebrew confirmation + no resubmit on refresh.** Loaded
+  `contact.php?sent=1` directly (this is what a page refresh after a real submit lands on
+  — a plain GET, not a resubmitted POST) and confirmed the Hebrew success message renders:
+  "תודה! קיבלנו את הפנייה ונחזור אליכם עוד היום."
+- [x] **#9 keyboard reachability + visible focus ring.** A real (not JS-triggered —
+  `element.focus()` doesn't reliably trigger `:focus-visible` in Chrome, a browser quirk,
+  not a site bug) keyboard `Tab` press landed on the skip-link first, matched
+  `:focus-visible`, and showed a solid visible outline in the new AA-safe blue.
+- [x] **#10 / §17 RTL numbers/currency not reversed.** Checked rendered text directly:
+  price shows `₪2,150,000` (symbol correctly attached, digits in correct order), a spec
+  tile shows `3 מתוך 6` (floor 3 of 6, correct order) — not bidi-reversed.
+- [x] **#1 375px no horizontal scroll, action bar never covered.** `resize_window` could
+  not actually shrink the viewport in this environment (`window.innerWidth` stayed
+  ~1745px regardless of the requested size — an environment/tool limitation, not
+  something in the site). Fell back to a static CSS audit instead: confirmed
+  `.action-bar` (mobile bottom bar) and `.cookie-banner` share the exact same `1000px`
+  breakpoint (`assets/css/style.css` — action-bar hides via `@media (min-width:1000px)`
+  right after its own rule block; cookie-banner's `bottom:0` override uses the identical
+  breakpoint), and confirmed no fixed-width elements exist that could force overflow at
+  375px (the gallery's `<img width="900">` is just an intrinsic-size hint — CSS
+  `.gallery-main img{ width:100% }` overrides it; the only real `min-width` in the
+  codebase is `admin-table{ min-width:640px }`, intentionally inside its own horizontal-
+  scroll wrapper for the admin data table, not a page-level overflow risk). Nothing
+  today's changes touched affects this layer, and it was already browser-verified at
+  375px in the session that built the cookie banner (see that section above) — so
+  treating this as confirmed-by-static-audit, not re-verified live, and flagging that
+  distinction honestly rather than claiming a browser check that didn't actually happen.
+- [x] **#11 no PHP notices/warnings with `error_reporting(E_ALL)`.** Checked the real
+  Apache error log (`C:\xampp\apache\logs\error.log` — not the empty
+  `php\logs\php_error_log`, which apparently isn't what's actually wired up) and found a
+  **real pre-existing bug**: `ini_set('session.gc_maxlifetime', ...)` in both
+  `admin/login.php` and `agent-portal/login.php`'s "remember me" branch, called *after*
+  `session_regenerate_id()` — `session.gc_maxlifetime` can only be set before a session
+  starts, so this threw `PHP Warning: ini_set(): Session ini settings cannot be changed
+  when a session is active` every time someone checked "remember me" and logged in
+  successfully (confirmed in the log from two real logins on 2026-08-11, unrelated to
+  this session). It was also functionally dead code — the actual cookie lifetime was
+  already correctly set via the `setcookie()` call directly above it, so this line did
+  nothing but throw. Deleted it from both files; nothing else needed to change since the
+  "remember me" feature's real mechanism (the cookie's `expires` param) was untouched.
+  Crawled all 16 public-facing pages with curl afterward — no new log entries.
+- Not independently re-verified this pass (already extensively browser/curl-verified
+  during their original phases per the Phase 1–6 notes above, and nothing in this
+  session touched that logic): #2 (6-tap flow), #5 (`cities_in_use()` auto-expansion),
+  #7 (full admin CRUD workflow).
+
 ## How to resume
 
 Say "read PROGRESS.md and continue" (or similar). Core Phase 6 items (sitemap.xml,
 robots.txt, mobile-overflow fixes, RTL/localization standard) are done — see below.
-The accessibility/Lighthouse pass is now done too (see above — 100/100 across all
-audited pages). Still open: JSON-LD on pages beyond `index.php`/`property.php` (not
-spec-required, spec §11 only asks for those two), and a final read-through of §15
-Acceptance criteria + the new §17 Hebrew/RTL criteria against the live site.
+The accessibility/Lighthouse pass and the §15/§17 acceptance read-through are now done
+too (see both sections above). Only remaining open item: JSON-LD on pages beyond
+`index.php`/`property.php` (not spec-required, spec §11 only asks for those two).
 
 The agent-level login/dashboard system (see the dedicated section above) is now built,
 browser-verified end-to-end, and documented in `NadlanisTeam.md` §19.
