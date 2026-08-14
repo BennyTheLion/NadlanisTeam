@@ -115,6 +115,28 @@
     });
   }
 
+  /* ---------- הודעת עוגיות ---------- */
+  var cookieBanner = document.getElementById("cookieBanner");
+  var cookieAccept = document.getElementById("cookieBannerAccept");
+  if (cookieBanner && cookieAccept) {
+    var COOKIE_CONSENT_KEY = "nadlanisteam_cookie_consent";
+    try {
+      if (!localStorage.getItem(COOKIE_CONSENT_KEY)) {
+        cookieBanner.hidden = false;
+      }
+    } catch (e) {
+      cookieBanner.hidden = false;
+    }
+    cookieAccept.addEventListener("click", function () {
+      cookieBanner.hidden = true;
+      try {
+        localStorage.setItem(COOKIE_CONSENT_KEY, "1");
+      } catch (e) {
+        /* אחסון מקומי חסום — ההודעה תוצג שוב בביקור הבא, לא קריטי */
+      }
+    });
+  }
+
   /* ---------- מחשבון משכנתא: חישוב מיידי ללא רענון (שיפור פרוגרסיבי) ---------- */
   var mortgageForm = document.getElementById("mortgageForm");
   if (mortgageForm) {

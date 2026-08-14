@@ -49,6 +49,8 @@ $actionBarProperty = $actionBarProperty ?? null;
     <nav class="footer-legal">
       <a href="<?= e(url('privacy.php')) ?>">מדיניות פרטיות</a>
       <a href="<?= e(url('terms.php')) ?>">תנאי שימוש</a>
+      <a href="<?= e(url('cookies.php')) ?>">מדיניות עוגיות</a>
+      <a href="<?= e(url('accessibility.php')) ?>">הצהרת נגישות</a>
       <a href="<?= e(url('admin/login.php')) ?>">כניסת מנהל</a>
     </nav>
   </div>
@@ -72,6 +74,14 @@ $actionBarProperty = $actionBarProperty ?? null;
   </a>
 </div>
 <?php endif; ?>
+
+<div class="cookie-banner" id="cookieBanner" hidden>
+  <div class="cookie-banner-inner">
+    <p>האתר משתמש בעוגיות טכניות הנדרשות לתפעולו התקין בלבד, ללא מעקב פרסומי. פרטים נוספים
+    ב<a href="<?= e(url('cookies.php')) ?>">מדיניות העוגיות</a> שלנו.</p>
+    <button type="button" class="btn btn-primary btn-sm" id="cookieBannerAccept">אישור</button>
+  </div>
+</div>
 
 <script src="<?= e(asset_url('assets/js/main.js')) ?>"></script>
 </body>

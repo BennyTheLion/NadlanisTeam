@@ -684,6 +684,51 @@ session exists in the browser profile, that verification will need to happen a
 different way (e.g. the user logs in manually, or via direct code/lint review) rather
 than by having the assistant fill in the admin login form itself.
 
+## Cookie consent banner + full legal document set (post-deploy-prep request)
+
+User asked to "add cookies banner and all legal documents ... linked to the footer."
+`privacy.php`/`terms.php` already existed (see below) and were already footer-linked, so
+the actual gap was: no cookie policy, no accessibility statement (standard/expected for
+an Israeli business site under the accessibility regs — תקנות שוויון זכויות לאנשים עם
+מוגבלות, ת"י 5568), and no actual consent-notice UI (the privacy policy only *mentioned*
+cookies in passing).
+
+Added:
+- **`cookies.php`** — dedicated cookie policy, same template pattern as `privacy.php`/
+  `terms.php` (page-head + `.container.section` + the same "generic text, get a lawyer to
+  review before going live" disclaimer banner). Lists the three cookies/storage items the
+  site actually sets (PHP session, CSRF token, the consent-banner localStorage flag) rather
+  than generic boilerplate, since those are the true, current facts about this codebase.
+- **`accessibility.php`** — same template pattern, standard הצהרת נגישות content, also
+  marked as needing a real audit + real coordinator contact before going live (not
+  fabricated — no accessibility audit has actually been performed on this site).
+- **Cookie consent banner** — `#cookieBanner` markup lives in `includes/footer.php` (so
+  it's on every public page site-wide), rendered `hidden` by default so it never flashes
+  for users who already consented and never gets stuck on-screen for non-JS users (this
+  site's JS is already progressive-enhancement-only elsewhere — mortgage calculator, nav
+  toggle — so this matches existing conventions rather than introducing a new pattern).
+  `assets/js/main.js` un-hides it on load unless `localStorage['nadlanisteam_cookie_consent']`
+  is already set, and sets that flag on "אישור" click (wrapped in try/catch — some browsers/
+  privacy modes throw on localStorage access; worst case the banner just reappears next
+  visit, not a functional break). Styled as a fixed bottom bar in `style.css`, stacked
+  *above* the existing mobile `.action-bar` (`bottom: var(--action-bar-h)` below 1000px,
+  `bottom: 0` above it, same breakpoint the action-bar itself already uses) so the two
+  fixed bottom bars never overlap.
+- **`includes/footer.php`** footer-legal nav now links all four: פרטיות, תנאי שימוש,
+  עוגיות, נגישות.
+
+No preference-center/reject-vs-accept split was built — the site's own privacy policy
+already states plainly that only strictly-necessary technical cookies are used (no
+tracking/ads), so a single acknowledgement button is what that actually calls for; a
+granular consent UI would be solving a problem this site doesn't have. If analytics or
+marketing cookies get added later, this is the first place that would need to change.
+
+Verified in-browser (not just `php -l`): banner appears on first visit, `elementFromPoint`
+at its center resolves to its own content (confirms it's actually on top and clickable,
+not visually present but covered by something else), clicking אישור hides it and sets the
+localStorage flag, and it stays hidden across a fresh page load afterward. Both new pages
+render with correct titles/content, and the footer shows all four legal links.
+
 ## How to resume
 
 Say "read PROGRESS.md and continue" (or similar). Core Phase 6 items (sitemap.xml,
